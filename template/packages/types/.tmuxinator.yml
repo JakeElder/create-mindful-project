@@ -1,0 +1,6 @@
+name: "Project Eden Types"
+attach: false
+
+windows:
+  - Vim: vim
+  - Terminal:

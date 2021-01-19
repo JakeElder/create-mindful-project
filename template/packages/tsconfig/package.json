@@ -1,0 +1,12 @@
+{
+  "name": "@mindfulstudio/project-eden-tsconfig",
+  "version": "0.1.0",
+  "description": "TS config for Project Eden",
+  "main": "tsconfig.json",
+  "files": [
+    "tsconfig.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

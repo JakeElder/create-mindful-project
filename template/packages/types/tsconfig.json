@@ -1,0 +1,5 @@
+{
+  "extends": "@mindfulstudio/project-eden-tsconfig",
+  "exclude": ["node_modules"],
+  "include": ["types/*.ts"]
+}

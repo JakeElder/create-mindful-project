@@ -1,0 +1,16 @@
+{
+  "npmClient": "yarn",
+  "useWorkspaces": true,
+  "packages": ["packages/*"],
+  "version": "independent",
+  "command": {
+    "version": {
+      "message": "chore(release): publish %s",
+      "conventionalCommits": true,
+      "exact": true
+    },
+    "add": {
+      "exact": true
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@mindfulstudio/create-project",
+  "version": "1.0.0",
+  "description": "Creates a Mindful Studio starter app",
+  "main": "index.js",
+  "license": "MIT",
+  "private": false,
+  "bin": {
+    "create-mindful-project": "./index.js"
+  }
+}

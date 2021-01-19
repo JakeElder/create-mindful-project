@@ -1,0 +1,7 @@
+name: "Project Eden UI"
+attach: false
+
+windows:
+  - Vim: vim
+  - Terminal:
+  - Server: yarn develop

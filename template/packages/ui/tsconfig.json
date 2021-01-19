@@ -1,0 +1,8 @@
+{
+  "extends": "@mindfulstudio/project-eden-tsconfig",
+  "compilerOptions": {
+    "types": ["@emotion/core"]
+  },
+  "exclude": ["node_modules"],
+  "include": ["**/*.ts", "**/*.tsx"]
+}

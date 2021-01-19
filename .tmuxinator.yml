@@ -1,0 +1,6 @@
+name: "Mindful Project Starter"
+
+windows:
+  - Vim: vim
+  - Terminal:
+  - Watch:

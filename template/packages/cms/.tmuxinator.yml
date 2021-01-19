@@ -1,0 +1,7 @@
+name: "Project Eden CMS"
+attach: false
+
+windows:
+  - Vim: vim
+  - Terminal:
+  - Server: yarn develop
