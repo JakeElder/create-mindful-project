@@ -15,6 +15,7 @@
     "lsr": "^2.0.0",
     "mustache": "^4.1.0",
     "node-filter-async": "^2.0.0",
+    "ora": "^5.2.0",
     "prompts": "^2.4.0"
   },
   "devDependencies": {

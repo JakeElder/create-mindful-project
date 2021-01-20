@@ -9,6 +9,7 @@ const { lsrAsync } = require("lsr");
 const { isBinaryFile } = require("isbinaryfile");
 const filterAsync = require("node-filter-async").default;
 const debug = require("debug")("create-mindful-project");
+const ora = require("ora");
 
 const DEBUG_VALUES = {
   projectName: "Mindful Studio",
@@ -19,6 +20,8 @@ async function getResponses() {
   if (debug.enabled) {
     return Promise.resolve(DEBUG_VALUES);
   }
+
+  console.log();
 
   return prompts([
     {
@@ -33,7 +36,7 @@ async function getResponses() {
       initial: (_, values) => {
         return paramCase(values.projectName);
       },
-      message: "Is this the correct project id?",
+      message: "Is this the correct project hid?",
     },
   ]);
 }
@@ -81,6 +84,7 @@ async function injectTemplateVars({ destDir, projectName, projectHid }) {
 
 async function run() {
   if (debug.enabled) {
+    console.log();
     debug("Clearing directory");
     await fs.remove(path.join(process.cwd(), DEBUG_VALUES.projectHid));
   }
@@ -95,9 +99,34 @@ async function run() {
     return;
   }
 
+  const steps = {
+    copyTemplate: {
+      spinner: ora({ text: "Copying template files", prefixText: " " }),
+    },
+    renamePackages: {
+      spinner: ora({ text: "Renaming Packages", prefixText: " " }),
+    },
+    injectTemplateVars: {
+      spinner: ora({ text: "Injecting template variables", prefixText: " " }),
+    },
+  };
+
+  console.log();
+
+  steps.copyTemplate.spinner.start();
   await copyTemplate({ templateDir, destDir });
+  steps.copyTemplate.spinner.succeed();
+
+  steps.renamePackages.spinner.start();
   await renamePackages({ projectHid, templateDir, destDir });
+  steps.renamePackages.spinner.succeed();
+
+  steps.injectTemplateVars.spinner.start();
   await injectTemplateVars({ projectName, projectHid, destDir });
+  steps.injectTemplateVars.spinner.succeed();
+
+  console.log();
+  console.log();
 }
 
 run().catch((e) => {
