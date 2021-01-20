@@ -16,6 +16,10 @@ const DEBUG_VALUES = {
   projectHid: "mindful-studio",
 };
 
+function br() {
+  console.log();
+}
+
 async function getResponses() {
   if (debug.enabled) {
     return Promise.resolve(DEBUG_VALUES);
@@ -111,7 +115,7 @@ async function run() {
     },
   };
 
-  console.log();
+  br();
 
   steps.copyTemplate.spinner.start();
   await copyTemplate({ templateDir, destDir });
@@ -125,8 +129,8 @@ async function run() {
   await injectTemplateVars({ projectName, projectHid, destDir });
   steps.injectTemplateVars.spinner.succeed();
 
-  console.log();
-  console.log();
+  br();
+  br();
 }
 
 run().catch((e) => {
