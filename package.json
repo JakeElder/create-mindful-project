@@ -7,5 +7,17 @@
   "private": false,
   "bin": {
     "create-mindful-project": "./index.js"
+  },
+  "dependencies": {
+    "change-case": "^4.1.2",
+    "fs-extra": "^9.0.1",
+    "isbinaryfile": "^4.0.6",
+    "lsr": "^2.0.0",
+    "mustache": "^4.1.0",
+    "node-filter-async": "^2.0.0",
+    "prompts": "^2.4.0"
+  },
+  "devDependencies": {
+    "debug": "^4.3.1"
   }
 }

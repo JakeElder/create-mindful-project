@@ -1,4 +1,4 @@
-name: "Project Eden Workspace"
+name: "{{projectName}} Workspace"
 attach: false
 
 windows:

@@ -1,8 +1,0 @@
-name: "Project Eden App"
-attach: false
-
-windows:
-  - Vim: vim
-  - Terminal:
-  - Server: yarn develop
-  - Test:
