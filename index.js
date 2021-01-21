@@ -44,7 +44,7 @@ async function copyTemplate({ templateDir, destDir }) {
   await fs.copy(templateDir, destDir);
 }
 
-async function renamePackages({ templateDir, destDir, projectHid }) {
+async function renamePackages({ destDir, projectHid }) {
   const packages = ["tsconfig", "types", "cms", "ui", "app"];
 
   await Promise.all(
@@ -110,19 +110,36 @@ async function installDeps({ destDir }) {
   await spawnAsync("lerna", ["bootstrap"], { cwd: destDir });
 }
 
-async function seedCMS({ projectName, projectId }) {
-  `
-  docker exec -i mongo sh -c ' \\
-    mongorestore \\
-    -d ${projectId} \\
-    --archive' < seed.data
-  `;
+async function seedCMS({ projectName, projectHid }) {
+  const spawnPromise = spawnAsync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "mongo",
+      "mongorestore",
+      "--archive",
+      "--nsFrom=ms.*",
+      `--nsTo=${projectHid}.*`,
+    ],
+    { cwd: path.dirname(__filename) }
+  );
 
-  `
-  docker exec -i mongo \\
-    mongo ${{ projectId }} --eval \\
-    'db.projects.updateOne({}, { $set: { name: "${projectName}" } })'
-  `;
+  const { stdin: childStdin } = spawnPromise.child;
+
+  const seedStream = fs.createReadStream(
+    path.join(path.dirname(__filename), "cms.data")
+  );
+
+  seedStream.on("data", (data) => childStdin.write(data));
+  seedStream.on("end", (data) => childStdin.end());
+
+  await spawnPromise;
+
+  // `docker exec -i mongo \\
+  //   mongo ${projectHid} --eval \\
+  //   'db.projects.updateOne({}, { $set: { name: "${projectName}" } })'
+  // `;
 }
 
 async function run() {
@@ -146,13 +163,16 @@ async function run() {
       spinner: ora("Copying template files"),
     },
     renamePackages: {
-      spinner: ora("Renaming Packages"),
+      spinner: ora("Renaming packages"),
     },
     injectTemplateVars: {
       spinner: ora("Injecting template variables"),
     },
     addEnvFiles: {
       spinner: ora("Adding .env files"),
+    },
+    seedCMS: {
+      spinner: ora("Initialising CMS"),
     },
     installDeps: {
       spinner: ora("Installing and linking dependencies"),
@@ -164,7 +184,7 @@ async function run() {
   steps.copyTemplate.spinner.succeed();
 
   steps.renamePackages.spinner.start();
-  await renamePackages({ projectHid, templateDir, destDir });
+  await renamePackages({ projectHid, destDir });
   steps.renamePackages.spinner.succeed();
 
   steps.injectTemplateVars.spinner.start();
@@ -174,6 +194,10 @@ async function run() {
   steps.addEnvFiles.spinner.start();
   await addEnvFiles({ projectHid, destDir });
   steps.addEnvFiles.spinner.succeed();
+
+  steps.seedCMS.spinner.start();
+  await seedCMS({ projectName, projectHid, destDir });
+  steps.seedCMS.spinner.succeed();
 
   steps.installDeps.spinner.start();
   await installDeps({ destDir });
