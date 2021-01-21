@@ -75,7 +75,7 @@ async function injectTemplateVars({ destDir, projectName, projectHid }) {
       const c = await fs.readFile(file.fullPath);
       await fs.writeFile(
         file.fullPath,
-        Mustache.render(c.toString(), { projectName })
+        Mustache.render(c.toString(), { projectName, projectHid })
       );
     })
   );
@@ -104,6 +104,10 @@ async function addEnvFiles({ projectHid, destDir }) {
       })
     )
   );
+}
+
+async function installDeps({ destDir }) {
+  await spawnAsync("lerna", ["bootstrap"], { cwd: destDir });
 }
 
 async function seedCMS({ projectName, projectId }) {
@@ -150,6 +154,9 @@ async function run() {
     addEnvFiles: {
       spinner: ora("Adding .env files"),
     },
+    installDeps: {
+      spinner: ora("Installing and linking dependencies"),
+    },
   };
 
   steps.copyTemplate.spinner.start();
@@ -167,6 +174,10 @@ async function run() {
   steps.addEnvFiles.spinner.start();
   await addEnvFiles({ projectHid, destDir });
   steps.addEnvFiles.spinner.succeed();
+
+  steps.installDeps.spinner.start();
+  await installDeps({ destDir });
+  steps.installDeps.spinner.succeed();
 }
 
 run().catch((e) => {
