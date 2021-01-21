@@ -17,16 +17,10 @@ const DEBUG_VALUES = {
   projectHid: "mindful-studio",
 };
 
-function br() {
-  console.log();
-}
-
 async function getResponses() {
   if (debug.enabled) {
     return Promise.resolve(DEBUG_VALUES);
   }
-
-  console.log();
 
   return prompts([
     {
@@ -129,7 +123,6 @@ async function seedCMS({ projectName, projectId }) {
 
 async function run() {
   if (debug.enabled) {
-    br();
     debug("Clearing directory");
     await fs.remove(path.join(process.cwd(), DEBUG_VALUES.projectHid));
   }
@@ -159,8 +152,6 @@ async function run() {
     },
   };
 
-  br();
-
   steps.copyTemplate.spinner.start();
   await copyTemplate({ templateDir, destDir });
   steps.copyTemplate.spinner.succeed();
@@ -176,16 +167,9 @@ async function run() {
   steps.addEnvFiles.spinner.start();
   await addEnvFiles({ projectHid, destDir });
   steps.addEnvFiles.spinner.succeed();
-
-  br();
-  br();
 }
 
 run().catch((e) => {
-  br();
-  br();
   console.log(e);
-  br();
-  br();
   process.exit(1);
 });
