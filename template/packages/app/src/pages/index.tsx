@@ -1,21 +1,41 @@
 import React from "react";
 import Head from "next/head";
-import { IndexPage, LandscapeTransition } from "@mindfulstudio/project-eden-ui";
+import { IndexPage } from "@mindfulstudio/project-eden-ui";
+import { gql, useQuery } from "@apollo/client";
+import { Project } from "@mindfulstudio/project-eden-types";
+
+type ProjectData = {
+  project: Project;
+};
+
+const PROJECT = gql`
+  query ProjectQuery {
+    project {
+      name
+    }
+  }
+`;
 
 export default function Home() {
+  const { loading, error, data } = useQuery<ProjectData>(PROJECT);
+
+  if (loading) {
+    return <span>Loading.</span>;
+  }
+
+  if (error) {
+    return <pre>{JSON.stringify(error, null, 2)}</pre>;
+  }
+
+  const { project } = data!;
+
   return (
     <div>
       <Head>
-        <title>Project Eden | Be at home. Anywhere</title>
+        <title>Mindful Studio Project</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <IndexPage
-        videoSrc="https://player.vimeo.com/external/493189525.m3u8?s=b0d350d87e15e002cc3ea2556bfee0adfa75f770"
-        poster="/Background.00_00_00_00.Still001.webp"
-        transition={() => (
-          <LandscapeTransition landscapeSrc="/repeating-landscape.webp" />
-        )}
-      />
+      <IndexPage projectName={project.name} />
     </div>
   );
 }

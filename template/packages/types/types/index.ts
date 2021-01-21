@@ -1,1 +1,1 @@
-export type { Person } from "./Person";
+export type { Project } from "./Project";
