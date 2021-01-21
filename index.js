@@ -146,6 +146,21 @@ async function seedCMS({ projectName, projectHid }) {
   ]);
 }
 
+async function initialiseGit({ destDir }) {
+  await spawnAsync("git", ["init"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["add", "--all"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["commit", "-m", "chore: initial commit"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["branch", "--move", "main"], {
+    cwd: destDir,
+  });
+}
+
 async function run() {
   const { projectName, projectHid } = await getResponses();
 
@@ -176,6 +191,10 @@ async function run() {
     {
       label: "Installing and linking dependencies",
       run: () => installDeps({ destDir }),
+    },
+    {
+      label: "Initialising Git",
+      run: () => initialiseGit({ destDir }),
     },
   ];
 
