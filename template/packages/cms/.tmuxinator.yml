@@ -1,5 +1,6 @@
 name: "Project Eden CMS"
 attach: false
+tmux_options: -L project-eden
 
 windows:
   - Vim: vim

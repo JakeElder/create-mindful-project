@@ -1,5 +1,6 @@
 name: "Project Eden UI"
 attach: false
+tmux_options: -L project-eden
 
 windows:
   - Vim: vim

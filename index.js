@@ -86,9 +86,24 @@ async function injectTemplateVars({ destDir, projectName, projectHid }) {
   );
 }
 
+async function seedCMS({ projectName, projectId }) {
+  `
+  docker exec -i mongo sh -c ' \\
+    mongorestore \\
+    -d ${projectId} \\
+    --archive' < seed.data
+  `;
+
+  `
+  docker exec -i mongo \\
+    mongo ${{ projectId }} --eval \\
+    'db.projects.updateOne({}, { $set: { name: "${projectName}" } })'
+  `;
+}
+
 async function run() {
   if (debug.enabled) {
-    console.log();
+    br();
     debug("Clearing directory");
     await fs.remove(path.join(process.cwd(), DEBUG_VALUES.projectHid));
   }
@@ -134,8 +149,10 @@ async function run() {
 }
 
 run().catch((e) => {
-  console.log("\n");
+  br();
+  br();
   console.log(e);
-  console.log("\n");
+  br();
+  br();
   process.exit(1);
 });

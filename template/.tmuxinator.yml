@@ -1,5 +1,6 @@
-name: "{{projectName}} Workspace"
+name: "Project Eden Workspace"
 attach: false
+tmux_options: -L project-eden
 
 windows:
   - Vim: vim
