@@ -13,9 +13,9 @@ export default {
 
 const Template: Story<FrameProps> = (args) => (
   <Frame {...args}>
-    <ProjectTitle projectName="Mindful Studio" />
+    <ProjectTitle projectName="{{projectName}}" />
   </Frame>
 );
 
 export const Default = Template.bind({});
-Default.args = {}
+Default.args = {};

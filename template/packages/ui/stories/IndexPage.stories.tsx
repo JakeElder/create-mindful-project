@@ -12,5 +12,5 @@ export default {
 
 export const Default: Story<IndexPageProps> = (args) => <IndexPage {...args} />;
 Default.args = {
-  projectName: "Mindful Studio",
+  projectName: "{{projectName}}",
 };

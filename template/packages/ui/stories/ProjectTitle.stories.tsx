@@ -16,5 +16,5 @@ export const Default: Story<ProjectTitleProps> = (args) => (
   <ProjectTitle {...args} />
 );
 Default.args = {
-  projectName: "Mindful Studio",
+  projectName: "{{projectName}}",
 };
