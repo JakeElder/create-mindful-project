@@ -7,37 +7,36 @@ const { paramCase } = require("change-case");
 const path = require("path");
 const { lsrAsync } = require("lsr");
 const { isBinaryFile } = require("isbinaryfile");
-const filterAsync = require("node-filter-async").default;
-const debug = require("debug")("create-mindful-project");
+const { default: filterAsync } = require("node-filter-async");
 const ora = require("ora");
 const spawnAsync = require("@expo/spawn-async");
 
-const DEBUG_VALUES = {
-  projectName: "Mindful Studio",
-  projectHid: "mindful-studio",
-};
+class PromptCancelledError extends Error {}
 
 async function getResponses() {
-  if (debug.enabled) {
-    return Promise.resolve(DEBUG_VALUES);
-  }
-
-  return prompts([
-    {
-      type: "text",
-      name: "projectName",
-      initial: "Mindful Studio",
-      message: "What is the name of the Project?",
-    },
-    {
-      type: "text",
-      name: "projectHid",
-      initial: (_, values) => {
-        return paramCase(values.projectName);
+  return prompts(
+    [
+      {
+        type: "text",
+        name: "projectName",
+        initial: "Mindful Studio",
+        message: "What is the name of the project?",
       },
-      message: "Is this the correct project hid?",
-    },
-  ]);
+      {
+        type: "text",
+        name: "projectHid",
+        initial: (_, values) => {
+          return paramCase(values.projectName);
+        },
+        message: "Is this the correct project hid?",
+      },
+    ],
+    {
+      onCancel: () => {
+        throw new PromptCancelledError();
+      },
+    }
+  );
 }
 
 async function copyTemplate({ templateDir, destDir }) {
@@ -148,68 +147,51 @@ async function seedCMS({ projectName, projectHid }) {
 }
 
 async function run() {
-  if (debug.enabled) {
-    debug("Clearing directory");
-    await fs.remove(path.join(process.cwd(), DEBUG_VALUES.projectHid));
-  }
-
   const { projectName, projectHid } = await getResponses();
 
   const templateDir = path.join(path.dirname(__filename), "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  if (!fs.lstatSync(templateDir).isDirectory()) {
-    console.log("Template directory does not exist");
-    return;
+  const steps = [
+    {
+      label: "Copying template files",
+      run: () => copyTemplate({ templateDir, destDir }),
+    },
+    {
+      label: "Renaming packages",
+      run: () => renamePackages({ projectHid, destDir }),
+    },
+    {
+      label: "Injecting template variables",
+      run: () => injectTemplateVars({ projectName, projectHid, destDir }),
+    },
+    {
+      label: "Adding .env files",
+      run: () => addEnvFiles({ projectHid, destDir }),
+    },
+    {
+      label: "Initialising CMS",
+      run: () => seedCMS({ projectName, projectHid }),
+    },
+    {
+      label: "Installing and linking dependencies",
+      run: () => installDeps({ destDir }),
+    },
+  ];
+
+  for (let step of steps) {
+    let spinner = ora(step.label);
+    spinner.start();
+    await step.run();
+    spinner.succeed();
   }
-
-  const steps = {
-    copyTemplate: {
-      spinner: ora("Copying template files"),
-    },
-    renamePackages: {
-      spinner: ora("Renaming packages"),
-    },
-    injectTemplateVars: {
-      spinner: ora("Injecting template variables"),
-    },
-    addEnvFiles: {
-      spinner: ora("Adding .env files"),
-    },
-    seedCMS: {
-      spinner: ora("Initialising CMS"),
-    },
-    installDeps: {
-      spinner: ora("Installing and linking dependencies"),
-    },
-  };
-
-  steps.copyTemplate.spinner.start();
-  await copyTemplate({ templateDir, destDir });
-  steps.copyTemplate.spinner.succeed();
-
-  steps.renamePackages.spinner.start();
-  await renamePackages({ projectHid, destDir });
-  steps.renamePackages.spinner.succeed();
-
-  steps.injectTemplateVars.spinner.start();
-  await injectTemplateVars({ projectName, projectHid, destDir });
-  steps.injectTemplateVars.spinner.succeed();
-
-  steps.addEnvFiles.spinner.start();
-  await addEnvFiles({ projectHid, destDir });
-  steps.addEnvFiles.spinner.succeed();
-
-  steps.seedCMS.spinner.start();
-  await seedCMS({ projectName, projectHid });
-  steps.seedCMS.spinner.succeed();
-
-  steps.installDeps.spinner.start();
-  await installDeps({ destDir });
-  steps.installDeps.spinner.succeed();
 }
 
 run().catch((e) => {
+  if (e instanceof PromptCancelledError) {
+    console.log("Cancelling");
+    process.exit(1);
+  }
   console.log(e);
   process.exit(1);
 });
