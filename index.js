@@ -201,7 +201,12 @@ async function run() {
   for (let step of steps) {
     let spinner = ora(step.label);
     spinner.start();
-    await step.run();
+    try {
+      await step.run();
+    } catch (e) {
+      spinner.fail();
+      throw e;
+    }
     spinner.succeed();
   }
 }
