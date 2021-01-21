@@ -10,6 +10,7 @@ const { isBinaryFile } = require("isbinaryfile");
 const filterAsync = require("node-filter-async").default;
 const debug = require("debug")("create-mindful-project");
 const ora = require("ora");
+const spawnAsync = require("@expo/spawn-async");
 
 const DEBUG_VALUES = {
   projectName: "Mindful Studio",
@@ -92,12 +93,21 @@ async function addEnvFiles({ projectHid, destDir }) {
     `${projectHid}-ui`,
     `${projectHid}-app`,
   ];
+
   await Promise.all(
     packages.map((package) =>
       fs.copyFile(
         path.join(destDir, "packages", package, ".env.example"),
         path.join(destDir, "packages", package, ".env")
       )
+    )
+  );
+
+  await Promise.all(
+    packages.map((package) =>
+      spawnAsync("direnv", ["allow"], {
+        cwd: path.join(destDir, "packages", package),
+      })
     )
   );
 }
