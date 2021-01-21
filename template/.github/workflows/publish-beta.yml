@@ -63,10 +63,10 @@ jobs:
         run: git log
       - name: Push to Heroku
         run: |
-          git remote add heroku git@heroku.com:project-eden-cms-stage.git
+          git remote add heroku git@heroku.com:{{projectHid}}-cms-stage.git
           subtree=`
             git subtree split \
-              --prefix packages/project-eden-cms \
+              --prefix packages/{{projectHid}}-cms \
               HEAD
           `
           git push --force heroku ${subtree}:refs/heads/master
@@ -101,7 +101,7 @@ jobs:
       - name: Build
         run: |
           npx lerna run build \
-            --scope @mindfulstudio/project-eden-ui \
+            --scope @mindfulstudio/{{projectHid}}-ui \
             --stream
       - name: Deploy
         env:
@@ -110,7 +110,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           npx lerna run deploy \
-            --scope @mindfulstudio/project-eden-ui \
+            --scope @mindfulstudio/{{projectHid}}-ui \
             --stream
 
   deploy_next_js_app:
@@ -135,5 +135,5 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           npx lerna run deploy \
-            --scope @mindfulstudio/project-eden-app \
+            --scope @mindfulstudio/{{projectHid}}-app \
             --stream

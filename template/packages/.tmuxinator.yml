@@ -1,4 +1,4 @@
-name: "Project Eden App"
+name: "{{projectName}} App"
 attach: false
 
 windows:

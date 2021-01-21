@@ -1,6 +1,6 @@
-name: "Project Eden UI"
+name: "{{projectName}} UI"
 attach: false
-tmux_options: -L project-eden
+tmux_options: -L {{projectHid}}
 
 windows:
   - Vim: vim
