@@ -15,3 +15,5 @@ do
     $(cd "$i" && tmuxinator start)
   fi
 done
+
+tmux -L project-eden attach
