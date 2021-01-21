@@ -1,8 +1,8 @@
 import React from "react";
 import Head from "next/head";
-import { IndexPage } from "@mindfulstudio/project-eden-ui";
+import { IndexPage } from "@mindfulstudio/{{projectHid}}-ui";
 import { gql, useQuery } from "@apollo/client";
-import { Project } from "@mindfulstudio/project-eden-types";
+import { Project } from "@mindfulstudio/{{projectHid}}-types";
 
 type ProjectData = {
   project: Project;

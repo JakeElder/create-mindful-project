@@ -1,5 +1,5 @@
 const withTranspiledModules = require("next-transpile-modules")([
-  "@mindfulstudio/project-eden-ui",
+  "@mindfulstudio/{{projectHid}}-ui",
 ]);
 
 module.exports = withTranspiledModules({
@@ -8,7 +8,7 @@ module.exports = withTranspiledModules({
       ...config.module.rules,
       {
         test: /\.tsx$/,
-        include: /project-eden-ui/,
+        include: /{{projectHid}}-ui/,
         use: {
           loader: "babel-loader",
           options: {

@@ -1,1 +1,1 @@
-# Project Eden App
+# {{projectName}} App

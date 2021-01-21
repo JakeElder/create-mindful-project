@@ -2,10 +2,10 @@
 
 packages=(
   .
-  packages/project-eden-types
-  packages/project-eden-cms
-  packages/project-eden-ui
-  packages/project-eden-app
+  packages/{{projectHid}}-types
+  packages/{{projectHid}}-cms
+  packages/{{projectHid}}-ui
+  packages/{{projectHid}}-app
 )
 
 for i in "${packages[@]}"
@@ -16,4 +16,4 @@ do
   fi
 done
 
-tmux -L project-eden attach
+tmux -L {{projectHid}} attach

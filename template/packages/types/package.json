@@ -1,7 +1,7 @@
 {
-  "name": "@mindfulstudio/project-eden-types",
+  "name": "@mindfulstudio/{{projectHid}}-types",
   "version": "0.1.0",
-  "description": "Project Eden Typescript types",
+  "description": "{{projectName}} Typescript types",
   "license": "UNLICENSED",
   "main": "types/index",
   "scripts": {
@@ -13,7 +13,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@mindfulstudio/project-eden-tsconfig": "0.1.0",
+    "@mindfulstudio/{{projectHid}}-tsconfig": "0.1.0",
     "superstruct": "^0.12.1"
   },
   "devDependencies": {

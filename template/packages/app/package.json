@@ -1,5 +1,5 @@
 {
-  "name": "@mindfulstudio/project-eden-app",
+  "name": "@mindfulstudio/{{projectHid}}-app",
   "version": "0.2.0-beta.5",
   "private": true,
   "scripts": {
@@ -13,8 +13,8 @@
     "@apollo/client": "^3.3.6",
     "@emotion/react": "^11.1.2",
     "@emotion/styled": "^11.0.0",
-    "@mindfulstudio/project-eden-tsconfig": "0.1.0",
-    "@mindfulstudio/project-eden-ui": "0.2.0-beta.6",
+    "@mindfulstudio/{{projectHid}}-tsconfig": "0.1.0",
+    "@mindfulstudio/{{projectHid}}-ui": "0.2.0-beta.6",
     "@styled-system/css": "^5.1.5",
     "graphql": "^15.4.0",
     "next": "10.0.3",

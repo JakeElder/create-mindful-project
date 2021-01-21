@@ -5,7 +5,7 @@ import {
   InMemoryCache,
   ApolloProvider,
 } from "@apollo/client";
-import { Theme } from "@mindfulstudio/project-eden-ui";
+import { Theme } from "@mindfulstudio/{{projectHid}}-ui";
 import "reset-css";
 
 const client = new ApolloClient({
