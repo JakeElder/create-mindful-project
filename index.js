@@ -111,7 +111,7 @@ async function installDeps({ destDir }) {
 }
 
 async function seedCMS({ projectName, projectHid }) {
-  const spawnPromise = spawnAsync(
+  const seedPromise = spawnAsync(
     "docker",
     [
       "exec",
@@ -125,7 +125,7 @@ async function seedCMS({ projectName, projectHid }) {
     { cwd: path.dirname(__filename) }
   );
 
-  const { stdin: childStdin } = spawnPromise.child;
+  const { stdin: childStdin } = seedPromise.child;
 
   const seedStream = fs.createReadStream(
     path.join(path.dirname(__filename), "cms.data")
@@ -134,12 +134,17 @@ async function seedCMS({ projectName, projectHid }) {
   seedStream.on("data", (data) => childStdin.write(data));
   seedStream.on("end", (data) => childStdin.end());
 
-  await spawnPromise;
+  await seedPromise;
 
-  // `docker exec -i mongo \\
-  //   mongo ${projectHid} --eval \\
-  //   'db.projects.updateOne({}, { $set: { name: "${projectName}" } })'
-  // `;
+  await spawnAsync("docker", [
+    "exec",
+    "-i",
+    "mongo",
+    "mongo",
+    projectHid,
+    "--eval",
+    `db.projects.updateOne({}, { $set: { name: "${projectName}"} })`,
+  ]);
 }
 
 async function run() {
@@ -196,7 +201,7 @@ async function run() {
   steps.addEnvFiles.spinner.succeed();
 
   steps.seedCMS.spinner.start();
-  await seedCMS({ projectName, projectHid, destDir });
+  await seedCMS({ projectName, projectHid });
   steps.seedCMS.spinner.succeed();
 
   steps.installDeps.spinner.start();
