@@ -86,6 +86,22 @@ async function injectTemplateVars({ destDir, projectName, projectHid }) {
   );
 }
 
+async function addEnvFiles({ projectHid, destDir }) {
+  const packages = [
+    `${projectHid}-cms`,
+    `${projectHid}-ui`,
+    `${projectHid}-app`,
+  ];
+  await Promise.all(
+    packages.map((package) =>
+      fs.copyFile(
+        path.join(destDir, "packages", package, ".env.example"),
+        path.join(destDir, "packages", package, ".env")
+      )
+    )
+  );
+}
+
 async function seedCMS({ projectName, projectId }) {
   `
   docker exec -i mongo sh -c ' \\
@@ -120,13 +136,16 @@ async function run() {
 
   const steps = {
     copyTemplate: {
-      spinner: ora({ text: "Copying template files", prefixText: " " }),
+      spinner: ora("Copying template files"),
     },
     renamePackages: {
-      spinner: ora({ text: "Renaming Packages", prefixText: " " }),
+      spinner: ora("Renaming Packages"),
     },
     injectTemplateVars: {
-      spinner: ora({ text: "Injecting template variables", prefixText: " " }),
+      spinner: ora("Injecting template variables"),
+    },
+    addEnvFiles: {
+      spinner: ora("Adding .env files"),
     },
   };
 
@@ -143,6 +162,10 @@ async function run() {
   steps.injectTemplateVars.spinner.start();
   await injectTemplateVars({ projectName, projectHid, destDir });
   steps.injectTemplateVars.spinner.succeed();
+
+  steps.addEnvFiles.spinner.start();
+  await addEnvFiles({ projectHid, destDir });
+  steps.addEnvFiles.spinner.succeed();
 
   br();
   br();
