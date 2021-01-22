@@ -10,6 +10,9 @@ const { isBinaryFile } = require("isbinaryfile");
 const { default: filterAsync } = require("node-filter-async");
 const ora = require("ora");
 const spawnAsync = require("@expo/spawn-async");
+const fetch = require("node-fetch");
+const dotenv = require("dotenv");
+dotenv.stringify = require("dotenv-stringify");
 
 class PromptCancelledError extends Error {}
 
@@ -29,6 +32,11 @@ async function getResponses() {
           return paramCase(values.projectName);
         },
         message: "Is this the correct project hid?",
+      },
+      {
+        type: "text",
+        name: "domain",
+        message: "What is the domain?",
       },
     ],
     {
@@ -161,8 +169,55 @@ async function initialiseGit({ destDir }) {
   });
 }
 
+async function vercel(method, endpoint, params) {
+  const r = await fetch(`https://api.vercel.com${endpoint}`, {
+    method,
+    ...(params && { body: JSON.stringify(params) }),
+    headers: {
+      ...(method === "POST" && { "Content-Type": "application/json" }),
+      Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
+    },
+  });
+
+  if (!r.ok) {
+    console.log(await r.json());
+    throw new Error("Failed Vercel API call");
+  }
+
+  return r.json();
+}
+
+async function setupVercelProject({ name, domain, env = [] }) {
+  const project = await vercel("POST", "/v6/projects", { name });
+  const d = await vercel("POST", `/v1/projects/${project.id}/alias`, {
+    domain,
+  });
+
+  if (env.length > 0) {
+    await Promise.all(
+      env.map((e) => vercel("POST", `/v6/projects/${project.id}/env`, e))
+    );
+  }
+
+  return project;
+}
+
+async function extendDotEnv(filePath, object) {
+  const env = dotenv.parse(await fs.readFile(filePath));
+  await fs.writeFile(
+    filePath,
+    dotenv.stringify({
+      ...env,
+      ...object,
+    })
+  );
+}
+
 async function run() {
-  const { projectName, projectHid } = await getResponses();
+  const { projectName, projectHid, domain } = await getResponses();
+
+  let uiProjectIdStage;
+  let appProjectIdStage;
 
   const templateDir = path.join(path.dirname(__filename), "template");
   const destDir = path.join(process.cwd(), projectHid);
@@ -196,6 +251,60 @@ async function run() {
       label: "Initialising Git",
       run: () => initialiseGit({ destDir }),
     },
+    {
+      label: "Setting up Vercel UI project",
+      run: async () => {
+        const project = await setupVercelProject({
+          name: `${projectHid}-ui-stage`,
+          domain: `ui.stage.${domain}`,
+        });
+        uiProjectIdStage = project.id;
+      },
+    },
+    {
+      label: "Setting UI env variables",
+      run: () => {
+        return extendDotEnv(
+          path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
+          {
+            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+            VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+          }
+        );
+      },
+    },
+    {
+      label: "Setting up Vercel App project",
+      run: async () => {
+        const project = await setupVercelProject({
+          name: `${projectHid}-app-stage`,
+          domain: `stage.${domain}`,
+          env: [
+            {
+              type: "plain",
+              key: "GRAPHQL_URL",
+              value: `https://cms.stage.${domain}/graphql`,
+              target: ["preview", "production"],
+            },
+          ],
+        });
+        appProjectIdStage = project.id;
+      },
+    },
+    {
+      label: "Setting App env variables",
+      run: () => {
+        return extendDotEnv(
+          path.join(destDir, "packages", `${projectHid}-app`, ".env"),
+          {
+            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+            VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
+          }
+        );
+      },
+    },
   ];
 
   for (let step of steps) {
@@ -213,7 +322,6 @@ async function run() {
 
 run().catch((e) => {
   if (e instanceof PromptCancelledError) {
-    console.log("Cancelling");
     process.exit(1);
   }
   console.log(e);
