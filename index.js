@@ -13,6 +13,7 @@ const spawnAsync = require("@expo/spawn-async");
 const fetch = require("node-fetch");
 const dotenv = require("dotenv");
 dotenv.stringify = require("dotenv-stringify");
+const { google } = require("googleapis");
 
 class PromptCancelledError extends Error {}
 
@@ -36,6 +37,7 @@ async function getResponses() {
       {
         type: "text",
         name: "domain",
+        initial: "mindfulstudio.io",
         message: "What is the domain?",
       },
     ],
@@ -213,6 +215,20 @@ async function extendDotEnv(filePath, object) {
   );
 }
 
+async function getGoogleAuth() {
+  const auth = new google.auth.GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
+  return await auth.getClient();
+}
+
+async function setupGCloudProject({ name, projectId }) {
+  await google.cloudresourcemanager("v1").projects.create({
+    resource: { name, projectId },
+    auth: await getGoogleAuth(),
+  });
+}
+
 async function run() {
   const { projectName, projectHid, domain } = await getResponses();
 
@@ -223,86 +239,115 @@ async function run() {
   const destDir = path.join(process.cwd(), projectHid);
 
   const steps = [
+    // {
+    //   label: "Copying template files",
+    //   run: () => copyTemplate({ templateDir, destDir }),
+    // },
+    // {
+    //   label: "Renaming packages",
+    //   run: () => renamePackages({ projectHid, destDir }),
+    // },
+    // {
+    //   label: "Injecting template variables",
+    //   run: () => injectTemplateVars({ projectName, projectHid, destDir }),
+    // },
+    // {
+    //   label: "Adding .env files",
+    //   run: () => addEnvFiles({ projectHid, destDir }),
+    // },
+    // {
+    //   label: "Initialising CMS",
+    //   run: () => seedCMS({ projectName, projectHid }),
+    // },
+    // {
+    //   label: "Installing and linking dependencies",
+    //   run: () => installDeps({ destDir }),
+    // },
+    // {
+    //   label: "Initialising Git",
+    //   run: () => initialiseGit({ destDir }),
+    // },
+    // {
+    //   label: "Setting up Vercel UI project",
+    //   run: async () => {
+    //     const project = await setupVercelProject({
+    //       name: `${projectHid}-ui-stage`,
+    //       domain: `ui.stage.${domain}`,
+    //     });
+    //     uiProjectIdStage = project.id;
+    //   },
+    // },
+    // {
+    //   label: "Setting UI env variables",
+    //   run: () => {
+    //     return extendDotEnv(
+    //       path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
+    //       {
+    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+    //         VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+    //       }
+    //     );
+    //   },
+    // },
+    // {
+    //   label: "Setting up Vercel App project",
+    //   run: async () => {
+    //     const project = await setupVercelProject({
+    //       name: `${projectHid}-app-stage`,
+    //       domain: `stage.${domain}`,
+    //       env: [
+    //         {
+    //           type: "plain",
+    //           key: "GRAPHQL_URL",
+    //           value: `https://cms.stage.${domain}/graphql`,
+    //           target: ["preview", "production"],
+    //         },
+    //       ],
+    //     });
+    //     appProjectIdStage = project.id;
+    //   },
+    // },
+    // {
+    //   label: "Setting App env variables",
+    //   run: () => {
+    //     return extendDotEnv(
+    //       path.join(destDir, "packages", `${projectHid}-app`, ".env"),
+    //       {
+    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+    //         VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
+    //       }
+    //     );
+    //   },
+    // },
     {
-      label: "Copying template files",
-      run: () => copyTemplate({ templateDir, destDir }),
-    },
-    {
-      label: "Renaming packages",
-      run: () => renamePackages({ projectHid, destDir }),
-    },
-    {
-      label: "Injecting template variables",
-      run: () => injectTemplateVars({ projectName, projectHid, destDir }),
-    },
-    {
-      label: "Adding .env files",
-      run: () => addEnvFiles({ projectHid, destDir }),
-    },
-    {
-      label: "Initialising CMS",
-      run: () => seedCMS({ projectName, projectHid }),
-    },
-    {
-      label: "Installing and linking dependencies",
-      run: () => installDeps({ destDir }),
-    },
-    {
-      label: "Initialising Git",
-      run: () => initialiseGit({ destDir }),
-    },
-    {
-      label: "Setting up Vercel UI project",
-      run: async () => {
-        const project = await setupVercelProject({
-          name: `${projectHid}-ui-stage`,
-          domain: `ui.stage.${domain}`,
-        });
-        uiProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting UI env variables",
-      run: () => {
-        return extendDotEnv(
-          path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
-          {
-            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-            VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+      label: "Setting App Google Cloud project",
+      run: (spinner) => {
+        const googleProjectName = `${projectName} CMS Stage`;
+        const idealProjectId = paramCase(googleProjectName);
+        async function recurse(projectId) {
+          try {
+            await setupGCloudProject({ name: googleProjectName, projectId });
+          } catch (e) {
+            if (e.response.data?.error.status !== "ALREADY_EXISTS") {
+              throw e;
+            }
+            spinner.stop();
+            const { compromiseProjectId } = await prompts([
+              {
+                type: "text",
+                name: "compromiseProjectId",
+                initial: projectId,
+                message:
+                  "This Google Project id is taken. What should the id be?",
+              },
+            ]);
+            spinner.start();
+            await recurse(compromiseProjectId);
           }
-        );
-      },
-    },
-    {
-      label: "Setting up Vercel App project",
-      run: async () => {
-        const project = await setupVercelProject({
-          name: `${projectHid}-app-stage`,
-          domain: `stage.${domain}`,
-          env: [
-            {
-              type: "plain",
-              key: "GRAPHQL_URL",
-              value: `https://cms.stage.${domain}/graphql`,
-              target: ["preview", "production"],
-            },
-          ],
-        });
-        appProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting App env variables",
-      run: () => {
-        return extendDotEnv(
-          path.join(destDir, "packages", `${projectHid}-app`, ".env"),
-          {
-            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-            VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
-          }
-        );
+        }
+        return recurse(idealProjectId);
       },
     },
   ];
@@ -311,7 +356,7 @@ async function run() {
     let spinner = ora(step.label);
     spinner.start();
     try {
-      await step.run();
+      await step.run(spinner);
     } catch (e) {
       spinner.fail();
       throw e;

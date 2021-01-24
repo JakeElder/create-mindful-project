@@ -15,6 +15,7 @@
     "dotenv": "^8.2.0",
     "dotenv-stringify": "^2.0.4",
     "fs-extra": "^9.0.1",
+    "googleapis": "^67.0.0",
     "isbinaryfile": "^4.0.6",
     "lsr": "^2.0.0",
     "mustache": "^4.1.0",
