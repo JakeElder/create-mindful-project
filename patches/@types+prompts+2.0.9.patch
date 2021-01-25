@@ -1,0 +1,13 @@
+diff --git a/node_modules/@types/prompts/index.d.ts b/node_modules/@types/prompts/index.d.ts
+index db55ea8..ed3e4fb 100644
+--- a/node_modules/@types/prompts/index.d.ts
++++ b/node_modules/@types/prompts/index.d.ts
+@@ -78,7 +78,7 @@ declare namespace prompts {
+         type: PromptType | Falsy | PrevCaller<T, PromptType | Falsy>;
+         name: ValueOrFunc<T>;
+         message?: ValueOrFunc<string>;
+-        initial?: string | number | boolean | Date;
++        initial?: string | number | boolean | Date | PrevCaller<T, string | number | boolean | Date>;
+         style?: string;
+         format?: PrevCaller<T, void>;
+         validate?: PrevCaller<T, boolean | string | Promise<boolean | string>>;

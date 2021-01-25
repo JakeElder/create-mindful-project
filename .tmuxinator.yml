@@ -4,3 +4,4 @@ tmux_options: -L mindful-project-starter
 windows:
   - Vim: vim
   - Terminal:
+  - Watch: yarn dev
