@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "source-map-support/register";
 import Mustache from "mustache";
 import fs from "fs-extra";
 import prompts from "prompts";
@@ -13,7 +14,8 @@ import spawnAsync from "@expo/spawn-async";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 import dotenvStringify from "dotenv-stringify";
-import { cloudresourcemanager_v1, google } from "googleapis";
+import PrettyError from "pretty-error";
+import * as googlecloud from "./google-cloud";
 
 class PromptCancelledError extends Error {}
 
@@ -266,69 +268,13 @@ async function extendDotEnv(filePath: string, object: { [key: string]: any }) {
   );
 }
 
-async function getGoogleAuth(scopes: string[]) {
-  const auth = new google.auth.GoogleAuth({ scopes });
-  return await auth.getClient();
-}
-
-async function createGCloudProject({
-  name,
-  projectId,
-}: {
-  name: string;
-  projectId: string;
-}) {
-  const crm = google.cloudresourcemanager("v1");
-  await crm.projects.create({
-    requestBody: { name, projectId },
-    auth: await getGoogleAuth([
-      "https://www.googleapis.com/auth/cloud-platform",
-    ]),
-  });
-  return crm.projects.get({
-    projectId,
-    auth: await getGoogleAuth([
-      "https://www.googleapis.com/auth/cloud-platform",
-    ]),
-  });
-}
-
-async function createGCloudApp({
-  projectNumber,
-  projectId,
-}: {
-  projectNumber: string;
-  projectId: string;
-}) {
-  const appengine = google.appengine("v1");
-  const serviceusage = google.serviceusage("v1");
-  await serviceusage.services.enable({
-    name: `projects/${projectNumber}/services/appengine.googleapis.com`,
-    auth: await getGoogleAuth([
-      "https://www.googleapis.com/auth/cloud-platform",
-      "https://www.googleapis.com/auth/service.management",
-    ]),
-  });
-  console.log(projectId);
-  const r = await appengine.apps.create({
-    requestBody: {
-      id: projectId,
-      locationId: "asia-south1",
-    },
-    auth: await getGoogleAuth([
-      "https://www.googleapis.com/auth/cloud-platform",
-    ]),
-  });
-  console.log(r);
-}
-
 async function run() {
   const { projectName, projectHid, domain } = await getResponses();
 
   let uiProjectIdStage: string;
   let appProjectIdStage: string;
 
-  const templateDir = path.join(path.dirname(__filename), "template");
+  const templateDir = path.join(path.dirname(__filename), "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
   const steps = [
@@ -348,111 +294,93 @@ async function run() {
       label: "Adding .env files",
       run: () => addEnvFiles({ projectHid, destDir }),
     },
-    {
-      label: "Initialising CMS",
-      run: () => seedCMS({ projectName, projectHid }),
-    },
-    {
-      label: "Installing and linking dependencies",
-      run: () => installDeps({ destDir }),
-    },
-    {
-      label: "Initialising Git",
-      run: () => initialiseGit({ destDir }),
-    },
-    {
-      label: "Setting up Vercel UI project",
-      run: async () => {
-        const project = await setupVercelProject({
-          name: `${projectHid}-ui-stage`,
-          domain: `ui.stage.${domain}`,
-        });
-        uiProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting UI env variables",
-      run: () => {
-        return extendDotEnv(
-          path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
-          {
-            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-            VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
-          }
-        );
-      },
-    },
-    {
-      label: "Setting up Vercel App project",
-      run: async () => {
-        const project = await setupVercelProject({
-          name: `${projectHid}-app-stage`,
-          domain: `stage.${domain}`,
-          env: [
-            {
-              type: "plain",
-              key: "GRAPHQL_URL",
-              value: `https://cms.stage.${domain}/graphql`,
-              target: ["preview", "production"],
-            },
-          ],
-        });
-        appProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting App env variables",
-      run: () => {
-        return extendDotEnv(
-          path.join(destDir, "packages", `${projectHid}-app`, ".env"),
-          {
-            VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-            VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-            VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
-          }
-        );
-      },
-    },
+    // {
+    //   label: "Initialising CMS",
+    //   run: () => seedCMS({ projectName, projectHid }),
+    // },
+    // {
+    //   label: "Installing and linking dependencies",
+    //   run: () => installDeps({ destDir }),
+    // },
+    // {
+    //   label: "Initialising Git",
+    //   run: () => initialiseGit({ destDir }),
+    // },
+    // {
+    //   label: "Setting up Vercel UI project",
+    //   run: async () => {
+    //     const project = await setupVercelProject({
+    //       name: `${projectHid}-ui-stage`,
+    //       domain: `ui.stage.${domain}`,
+    //     });
+    //     uiProjectIdStage = project.id;
+    //   },
+    // },
+    // {
+    //   label: "Setting UI env variables",
+    //   run: () => {
+    //     return extendDotEnv(
+    //       path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
+    //       {
+    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+    //         VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+    //       }
+    //     );
+    //   },
+    // },
+    // {
+    //   label: "Setting up Vercel App project",
+    //   run: async () => {
+    //     const project = await setupVercelProject({
+    //       name: `${projectHid}-app-stage`,
+    //       domain: `stage.${domain}`,
+    //       env: [
+    //         {
+    //           type: "plain",
+    //           key: "GRAPHQL_URL",
+    //           value: `https://cms.stage.${domain}/graphql`,
+    //           target: ["preview", "production"],
+    //         },
+    //       ],
+    //     });
+    //     appProjectIdStage = project.id;
+    //   },
+    // },
+    // {
+    //   label: "Setting App env variables",
+    //   run: () => {
+    //     return extendDotEnv(
+    //       path.join(destDir, "packages", `${projectHid}-app`, ".env"),
+    //       {
+    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+    //         VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
+    //       }
+    //     );
+    //   },
+    // },
     {
       label: "Setting up Google Cloud",
       run: async (spinner: ora.Ora) => {
         const googleProjectName = `${projectName} CMS Stage`;
         const idealProjectId = paramCase(googleProjectName);
-        async function setupProjectWithIdCheck(
-          projectId: string
-        ): Promise<cloudresourcemanager_v1.Schema$Project> {
-          try {
-            const project = await createGCloudProject({
-              name: googleProjectName,
-              projectId,
-            });
-            return project.data;
-          } catch (e) {
-            if (e.response?.data.error.status !== "ALREADY_EXISTS") {
-              throw e;
-            }
-            spinner.stop();
-            const { compromiseProjectId } = await prompts([
-              {
-                type: "text",
-                name: "compromiseProjectId",
-                initial: projectId,
-                message:
-                  "This Google Project id is taken. What should the id be?",
-              },
-            ]);
-            spinner.start();
-            return setupProjectWithIdCheck(compromiseProjectId);
-          }
+        async function handleTakenId(takenId: string) {
+          spinner.stop();
+          const { compromiseProjectId } = await prompts({
+            type: "text",
+            name: "compromiseProjectId",
+            initial: takenId,
+            message: "This Google Project id is taken. What should the id be?",
+          });
+          spinner.start();
+          return compromiseProjectId;
         }
-        const { projectNumber, projectId } = await setupProjectWithIdCheck(
-          idealProjectId
+        await googlecloud.setupProject(
+          googleProjectName,
+          idealProjectId,
+          handleTakenId
         );
-        await createGCloudApp({ projectNumber, projectId } as {
-          projectNumber: string;
-          projectId: string;
-        });
       },
     },
   ];
@@ -474,6 +402,8 @@ run().catch((e) => {
   if (e instanceof PromptCancelledError) {
     process.exit(1);
   }
-  console.log(e);
+  const pe = new PrettyError();
+  console.log(require("util").inspect(e, false, null, true));
+  console.log(pe.render(e));
   process.exit(1);
 });
