@@ -239,47 +239,44 @@ async function run() {
       label: "Initialising CMS",
       run: () => seedCMS({ projectName, projectHid }),
     },
-    // {
-    //   label: "Setting up Vercel UI project",
-    //   run: async () => {
-    //     const project = await vercel.createProject({
-    //       name: `${projectHid}-ui-stage`,
-    //       domain: `ui.stage.${domain}`,
-    //     });
-    //     uiProjectIdStage = project.id;
-    //   },
-    // },
-    // {
-    //   label: "Setting UI env variables",
-    //   run: () => {
-    //     return extendDotEnv(
-    //       path.join(destDir, "packages", "ui", ".env"),
-    //       {
-    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-    //         VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
-    //       }
-    //     );
-    //   },
-    // },
-    // {
-    //   label: "Setting up Vercel App project",
-    //   run: async () => {
-    //     const project = await vercel.createProject({
-    //       name: `${projectHid}-app-stage`,
-    //       domain: `stage.${domain}`,
-    //       env: [
-    //         {
-    //           type: "plain",
-    //           key: "GRAPHQL_URL",
-    //           value: `https://cms.stage.${domain}/graphql`,
-    //           target: ["preview", "production"],
-    //         },
-    //       ],
-    //     });
-    //     appProjectIdStage = project.id;
-    //   },
-    // },
+    {
+      label: "Setting up Vercel UI project",
+      run: async () => {
+        const project = await vercel.createProject({
+          name: `${projectHid}-ui-stage`,
+          domain: `ui.stage.${domain}`,
+        });
+        uiProjectIdStage = project.id;
+      },
+    },
+    {
+      label: "Setting UI env variables",
+      run: () => {
+        return extendDotEnv(path.join(destDir, "packages", "ui", ".env"), {
+          VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+          VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+          VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+        });
+      },
+    },
+    {
+      label: "Setting up Vercel App project",
+      run: async () => {
+        const project = await vercel.createProject({
+          name: `${projectHid}-app-stage`,
+          domain: `stage.${domain}`,
+          env: [
+            {
+              type: "plain",
+              key: "GRAPHQL_URL",
+              value: `https://cms.stage.${domain}/graphql`,
+              target: ["preview", "production"],
+            },
+          ],
+        });
+        appProjectIdStage = project.id;
+      },
+    },
     {
       label: "Setting App env variables",
       run: async () => {
