@@ -112,3 +112,10 @@ exports
 *.cache
 build
 .strapi-updater.json
+
+############################
+# Google Cloud
+############################
+
+app.stage.yml
+app.prod.yml

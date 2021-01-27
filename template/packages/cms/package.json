@@ -7,7 +7,9 @@
     "develop": "strapi develop",
     "start": "strapi start",
     "build": "strapi build",
-    "strapi": "strapi"
+    "gcp-build": "strapi build",
+    "strapi": "strapi",
+    "deploy:stage": "gcloud app deploy app.stage.yml --project $GCLOUD_PROJECT_ID_STAGE --quiet"
   },
   "dependencies": {
     "koa-sslify": "^4.0.3",
@@ -29,7 +31,7 @@
     "uuid": "720d267f-dfc7-4ba9-bc7b-4c87ce227d6a"
   },
   "engines": {
-    "node": ">=10.16.0 <=14.x.x",
+    "node": "14.x.x",
     "npm": ">=6.0.0"
   },
   "license": "MIT"

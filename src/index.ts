@@ -84,10 +84,12 @@ async function injectTemplateVars({
   destDir,
   projectName,
   projectHid,
+  cmsDatabaseUri,
 }: {
   destDir: string;
   projectName: string;
   projectHid: string;
+  cmsDatabaseUri: string;
 }) {
   // Get recursive template directory listings
   const files = await lsrAsync(destDir);
@@ -106,24 +108,18 @@ async function injectTemplateVars({
       const c = await fs.readFile(file.fullPath);
       await fs.writeFile(
         file.fullPath,
-        Mustache.render(c.toString(), { projectName, projectHid })
+        Mustache.render(c.toString(), {
+          projectName,
+          projectHid,
+          cmsDatabaseUri,
+        })
       );
     })
   );
 }
 
-async function addEnvFiles({
-  projectHid,
-  destDir,
-}: {
-  projectHid: string;
-  destDir: string;
-}) {
-  const packages = [
-    `${projectHid}-cms`,
-    `${projectHid}-ui`,
-    `${projectHid}-app`,
-  ];
+async function addEnvFiles({ destDir }: { destDir: string }) {
+  const packages = ["cms", "ui", "app"];
 
   await Promise.all(
     packages.map((p) =>
@@ -154,24 +150,20 @@ async function seedCMS({
   projectName: string;
   projectHid: string;
 }) {
-  const seedPromise = spawnAsync(
-    "docker",
-    [
-      "exec",
-      "-i",
-      "mongo",
-      "mongorestore",
-      "--archive",
-      "--nsFrom=ms.*",
-      `--nsTo=${projectHid}.*`,
-    ],
-    { cwd: path.dirname(__filename) }
-  );
+  const seedPromise = spawnAsync("docker", [
+    "exec",
+    "-i",
+    "mongo",
+    "mongorestore",
+    "--archive",
+    "--nsFrom=ms.*",
+    `--nsTo=${projectHid}.*`,
+  ]);
 
   const { stdin: childStdin } = seedPromise.child;
 
   const seedStream = fs.createReadStream(
-    path.join(path.dirname(__filename), "cms.data")
+    path.join(path.dirname(__filename), "..", "cms.data")
   );
 
   seedStream.on("data", (data) => childStdin!.write(data));
@@ -268,44 +260,36 @@ async function extendDotEnv(filePath: string, object: { [key: string]: any }) {
   );
 }
 
+type Step = {
+  label: string;
+  run: (spinner: ora.Ora) => Promise<void>;
+  skip?: boolean;
+  isolate?: boolean;
+};
+
 async function run() {
   const { projectName, projectHid, domain } = await getResponses();
 
   let uiProjectIdStage: string;
   let appProjectIdStage: string;
+  let gcloudProjectIdStage: string;
 
   const templateDir = path.join(path.dirname(__filename), "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  const steps = [
+  const steps: Step[] = [
     {
       label: "Copying template files",
       run: () => copyTemplate({ templateDir, destDir }),
     },
     {
-      label: "Renaming packages",
-      run: () => renamePackages({ projectHid, destDir }),
-    },
-    {
-      label: "Injecting template variables",
-      run: () => injectTemplateVars({ projectName, projectHid, destDir }),
-    },
-    {
       label: "Adding .env files",
-      run: () => addEnvFiles({ projectHid, destDir }),
+      run: () => addEnvFiles({ destDir }),
     },
-    // {
-    //   label: "Initialising CMS",
-    //   run: () => seedCMS({ projectName, projectHid }),
-    // },
-    // {
-    //   label: "Installing and linking dependencies",
-    //   run: () => installDeps({ destDir }),
-    // },
-    // {
-    //   label: "Initialising Git",
-    //   run: () => initialiseGit({ destDir }),
-    // },
+    {
+      label: "Initialising CMS",
+      run: () => seedCMS({ projectName, projectHid }),
+    },
     // {
     //   label: "Setting up Vercel UI project",
     //   run: async () => {
@@ -320,7 +304,7 @@ async function run() {
     //   label: "Setting UI env variables",
     //   run: () => {
     //     return extendDotEnv(
-    //       path.join(destDir, "packages", `${projectHid}-ui`, ".env"),
+    //       path.join(destDir, "packages", "ui", ".env"),
     //       {
     //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
     //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
@@ -347,25 +331,22 @@ async function run() {
     //     appProjectIdStage = project.id;
     //   },
     // },
-    // {
-    //   label: "Setting App env variables",
-    //   run: () => {
-    //     return extendDotEnv(
-    //       path.join(destDir, "packages", `${projectHid}-app`, ".env"),
-    //       {
-    //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-    //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-    //         VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
-    //       }
-    //     );
-    //   },
-    // },
+    {
+      label: "Setting App env variables",
+      run: async () => {
+        await extendDotEnv(path.join(destDir, "packages", "app", ".env"), {
+          VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+          VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+          VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
+        });
+      },
+    },
     {
       label: "Setting up Google Cloud",
       run: async (spinner: ora.Ora) => {
         const googleProjectName = `${projectName} CMS Stage`;
         const idealProjectId = paramCase(googleProjectName);
-        async function handleTakenId(takenId: string) {
+        async function replaceTakenId(takenId: string) {
           spinner.stop();
           const { compromiseProjectId } = await prompts({
             type: "text",
@@ -376,12 +357,43 @@ async function run() {
           spinner.start();
           return compromiseProjectId;
         }
-        await googlecloud.setupProject(
+        const project = await googlecloud.setupProject(
           googleProjectName,
           idealProjectId,
-          handleTakenId
+          replaceTakenId
         );
+        gcloudProjectIdStage = project.projectId as string;
       },
+    },
+    {
+      label: "Setting App env variables",
+      run: async () => {
+        await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
+          GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
+        });
+      },
+    },
+    {
+      label: "Injecting template variables",
+      run: () =>
+        injectTemplateVars({
+          projectName,
+          projectHid,
+          destDir,
+          cmsDatabaseUri: process.env.CMS_DATABASE_URI as string,
+        }),
+    },
+    {
+      label: "Renaming packages",
+      run: () => renamePackages({ projectHid, destDir }),
+    },
+    {
+      label: "Installing and linking dependencies",
+      run: () => installDeps({ destDir }),
+    },
+    {
+      label: "Initialising Git",
+      run: () => initialiseGit({ destDir }),
     },
   ];
 

@@ -16,6 +16,7 @@
   "dependencies": {
     "@expo/spawn-async": "^1.5.0",
     "change-case": "^4.1.2",
+    "delay": "^4.4.0",
     "dotenv": "^8.2.0",
     "dotenv-stringify": "^2.0.4",
     "fs-extra": "^9.0.1",
