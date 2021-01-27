@@ -5,9 +5,9 @@
   "scripts": {
     "develop": "next dev -p 5020",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "start": "next start",
-    "deploy": "npx vercel deploy --no-clipboard --token=$VERCEL_TOKEN --prod",
-    "typecheck": "tsc --noEmit"
+    "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy --no-clipboard --token=$VERCEL_TOKEN --prod"
   },
   "dependencies": {
     "@apollo/client": "^3.3.6",
