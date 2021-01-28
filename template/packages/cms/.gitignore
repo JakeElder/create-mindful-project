@@ -119,3 +119,10 @@ build
 
 app.stage.yml
 app.prod.yml
+
+
+############################
+# Project temp files
+############################
+
+./migrate.tmp

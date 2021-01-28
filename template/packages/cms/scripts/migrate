@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+rm -rf .migrate.tmp && mkdir .migrate.tmp
+
+collections=(
+  projects
+)
+
+for collection in "${collections[@]}"
+do
+  docker run \
+    --rm \
+    --network host \
+    mongo:4.2.8 \
+      mongoexport \
+        --uri=$1 \
+        --collection=$collection \
+      > "tmp/${collection}.json"
+
+  [[ $? -eq 0 ]] || exit 1
+done
+
+for collection in "${collections[@]}"
+do
+  cat "tmp/${collection}.json" | docker run \
+    -i \
+    --rm \
+    --network host \
+    mongo:4.2.8 \
+      mongoimport \
+        --uri=$2 \
+        --mode=upsert \
+        --collection=$collection
+
+  [[ $? -eq 0 ]] || exit 1
+done
+
+rm -rf .migrate.tmp && mkdir .migrate.tmp
