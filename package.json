@@ -18,9 +18,11 @@
     "@octokit/core": "^3.2.5",
     "change-case": "^4.1.2",
     "delay": "^4.4.0",
+    "digest-fetch": "^1.1.5",
     "dotenv": "^8.2.0",
     "dotenv-stringify": "^2.0.4",
     "fs-extra": "^9.0.1",
+    "generate-password": "^1.6.0",
     "googleapis": "^67.0.0",
     "isbinaryfile": "^4.0.6",
     "lsr": "^2.0.0",
@@ -30,7 +32,8 @@
     "ora": "^5.2.0",
     "pretty-error": "^3.0.3",
     "prompts": "^2.4.0",
-    "tweetsodium": "^0.0.5"
+    "tweetsodium": "^0.0.5",
+    "urijs": "^1.19.5"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.6",
@@ -38,6 +41,7 @@
     "@types/node": "^14.14.22",
     "@types/node-fetch": "^2.5.8",
     "@types/prompts": "^2.0.9",
+    "@types/urijs": "^1.19.14",
     "patch-package": "^6.2.2",
     "postinstall-postinstall": "^2.1.0",
     "source-map-support": "^0.5.19",
