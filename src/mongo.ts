@@ -39,7 +39,7 @@ export async function createUser(name: string, password: string) {
     databaseName: "admin",
     username: name,
     groupId: projectId,
-    password: "passwwdd",
+    password,
     roles: [
       { databaseName: name, roleName: "dbAdmin" },
       { databaseName: name, roleName: "readWrite" },

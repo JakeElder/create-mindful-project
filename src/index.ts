@@ -133,11 +133,20 @@ async function addEnvFiles({ destDir }: { destDir: string }) {
       )
     )
   );
+}
 
+async function enableEnvFiles({
+  destDir,
+  projectHid,
+}: {
+  destDir: string;
+  projectHid: string;
+}) {
+  const packages = ["cms", "ui", "app"];
   await Promise.all(
     packages.map((p) =>
       spawnAsync("direnv", ["allow"], {
-        cwd: path.join(destDir, "packages", p),
+        cwd: path.join(destDir, "packages", `${projectHid}-${p}`),
       })
     )
   );
@@ -186,7 +195,13 @@ async function seedCMS({
   ]);
 }
 
-async function initialiseGit({ destDir }: { destDir: string }) {
+async function initialiseGit({
+  destDir,
+  originUrl,
+}: {
+  destDir: string;
+  originUrl: string;
+}) {
   await spawnAsync("git", ["init"], {
     cwd: destDir,
   });
@@ -197,6 +212,18 @@ async function initialiseGit({ destDir }: { destDir: string }) {
     cwd: destDir,
   });
   await spawnAsync("git", ["branch", "--move", "main"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["remote", "add", "origin", originUrl], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["push", "--set-upstream", "origin", "main"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["checkout", "-b", "develop"], {
+    cwd: destDir,
+  });
+  await spawnAsync("git", ["push", "--set-upstream", "origin", "develop"], {
     cwd: destDir,
   });
 }
@@ -210,9 +237,6 @@ async function extendDotEnv(filePath: string, object: { [key: string]: any }) {
       ...object,
     })
   );
-  await spawnAsync("direnv", ["allow"], {
-    cwd: path.dirname(filePath),
-  });
 }
 
 function makeReplaceTakenIdFn({
@@ -243,12 +267,21 @@ type Step = {
 };
 
 async function run() {
-  const { projectName, projectHid, domain } = await getResponses();
+  const {
+    projectName,
+    projectHid,
+    domain,
+  }: {
+    projectName: string;
+    projectHid: string;
+    domain: string;
+  } = await getResponses();
 
   let uiProjectIdStage: string;
   let appProjectIdStage: string;
   let gcloudProjectIdStage: string;
   let cmsDatabaseUriStage: string;
+  let githubOriginUrlStage: string;
 
   const templateDir = path.join(path.dirname(__filename), "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
@@ -344,7 +377,7 @@ async function run() {
     {
       label: "Setting up Github",
       run: async (spinner) => {
-        await github.createRepo({
+        githubOriginUrlStage = await github.createRepo({
           name: projectHid,
           replaceTakenRepoName: makeReplaceTakenIdFn({
             spinner,
@@ -382,6 +415,7 @@ async function run() {
         cmsDatabaseUriStage = URI(srvAddress)
           .username(projectHid)
           .password(password)
+          .pathname(projectHid)
           .query({ retryWrites: "true", w: "majority" })
           .toString();
 
@@ -405,12 +439,16 @@ async function run() {
       run: () => renamePackages({ projectHid, destDir }),
     },
     {
+      label: "Enabling env vars",
+      run: () => enableEnvFiles({ destDir, projectHid }),
+    },
+    {
       label: "Installing and linking dependencies",
       run: () => installDeps({ destDir }),
     },
     {
       label: "Initialising Git",
-      run: () => initialiseGit({ destDir }),
+      run: () => initialiseGit({ destDir, originUrl: githubOriginUrlStage }),
     },
   ];
 
