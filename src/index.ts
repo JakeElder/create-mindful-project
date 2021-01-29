@@ -10,16 +10,17 @@ import { lsrAsync } from "lsr";
 import { isBinaryFile } from "isbinaryfile";
 import filterAsync from "node-filter-async";
 import ora from "ora";
-import spawnAsync from "@expo/spawn-async";
 import dotenv from "dotenv";
 import dotenvStringify from "dotenv-stringify";
 import PrettyError from "pretty-error";
 import passwd from "generate-password";
 import URI from "urijs";
+import execa from "execa";
 import * as googlecloud from "./google-cloud";
 import * as vercel from "./vercel";
 import * as github from "./github";
 import * as mongo from "./mongo";
+import { Writable } from "stream";
 
 class PromptCancelledError extends Error {}
 class MissingEnvVarError extends Error {}
@@ -54,16 +55,6 @@ async function getResponses() {
       },
     }
   );
-}
-
-async function copyTemplate({
-  templateDir,
-  destDir,
-}: {
-  templateDir: string;
-  destDir: string;
-}) {
-  await fs.copy(templateDir, destDir);
 }
 
 async function renamePackages({
@@ -146,7 +137,7 @@ async function enableEnvFiles({
   const packages = ["cms", "ui", "app"];
   await Promise.all(
     packages.map((p) =>
-      spawnAsync("direnv", ["allow"], {
+      execa("direnv", ["allow"], {
         cwd: path.join(destDir, "packages", `${projectHid}-${p}`),
       })
     )
@@ -154,7 +145,7 @@ async function enableEnvFiles({
 }
 
 async function installDeps({ destDir }: { destDir: string }) {
-  await spawnAsync("lerna", ["bootstrap"], { cwd: destDir });
+  await execa("lerna", ["bootstrap"], { cwd: destDir });
 }
 
 async function seedCMS({
@@ -164,7 +155,7 @@ async function seedCMS({
   projectName: string;
   projectHid: string;
 }) {
-  const seedPromise = spawnAsync("docker", [
+  const seedProcess = execa("docker", [
     "exec",
     "-i",
     "mongo",
@@ -174,18 +165,13 @@ async function seedCMS({
     `--nsTo=${projectHid}.*`,
   ]);
 
-  const { stdin: childStdin } = seedPromise.child;
-
-  const seedStream = fs.createReadStream(
+  fs.createReadStream(
     path.join(path.dirname(__filename), "..", "cms.data")
-  );
+  ).pipe(seedProcess.stdin as Writable);
 
-  seedStream.on("data", (data) => childStdin!.write(data));
-  seedStream.on("end", () => childStdin!.end());
+  await seedProcess;
 
-  await seedPromise;
-
-  await spawnAsync("docker", [
+  await execa("docker", [
     "exec",
     "-i",
     "mongo",
@@ -203,28 +189,28 @@ async function initialiseGit({
   destDir: string;
   originUrl: string;
 }) {
-  await spawnAsync("git", ["init"], {
+  await execa("git", ["init"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["add", "--all"], {
+  await execa("git", ["add", "--all"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["commit", "-m", "chore: initial commit [skip ci]"], {
+  await execa("git", ["commit", "-m", "chore: initial commit [skip ci]"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["branch", "--move", "main"], {
+  await execa("git", ["branch", "--move", "main"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["remote", "add", "origin", originUrl], {
+  await execa("git", ["remote", "add", "origin", originUrl], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["push", "--set-upstream", "origin", "main"], {
+  await execa("git", ["push", "--set-upstream", "origin", "main"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["checkout", "-b", "develop"], {
+  await execa("git", ["checkout", "-b", "develop"], {
     cwd: destDir,
   });
-  await spawnAsync("git", ["push", "--set-upstream", "origin", "develop"], {
+  await execa("git", ["push", "--set-upstream", "origin", "develop"], {
     cwd: destDir,
   });
 }
@@ -290,7 +276,7 @@ async function run() {
   const steps: Step[] = [
     {
       label: "Copying template files",
-      run: () => copyTemplate({ templateDir, destDir }),
+      run: () => fs.copy(templateDir, destDir),
     },
     {
       label: "Adding .env files",

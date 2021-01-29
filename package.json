@@ -14,13 +14,13 @@
     "cmpr": "./dist/index.js"
   },
   "dependencies": {
-    "@expo/spawn-async": "^1.5.0",
     "@octokit/core": "^3.2.5",
     "change-case": "^4.1.2",
     "delay": "^4.4.0",
     "digest-fetch": "^1.1.5",
     "dotenv": "^8.2.0",
     "dotenv-stringify": "^2.0.4",
+    "execa": "^5.0.0",
     "fs-extra": "^9.0.1",
     "generate-password": "^1.6.0",
     "googleapis": "^67.0.0",
