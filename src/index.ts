@@ -22,6 +22,7 @@ import * as github from "./github";
 import * as mongo from "./mongo";
 
 class PromptCancelledError extends Error {}
+class MissingEnvVarError extends Error {}
 
 async function getResponses() {
   return prompts(
@@ -401,6 +402,27 @@ async function run() {
           throw new Error();
         }
 
+        const GCLOUD_APP_YAML_BASE64_STAGE = await (async () => {
+          const tpl = await fs.readFile(
+            `${destDir}/packages/cms/app.stage.yml`,
+            "utf8"
+          );
+          const yml = Mustache.render(tpl, { cmsDatabaseUriStage });
+          console.log(yml);
+          const encoded = Buffer.from(yml).toString("base64");
+          console.log(encoded);
+          return encoded;
+        })();
+
+        if (typeof process.env.GOOGLE_APPLICATION_CREDENTIALS !== "string") {
+          throw new MissingEnvVarError();
+        }
+
+        const GCLOUD_SERVICE_ACCOUNT_JSON = await fs.readFile(
+          process.env.GOOGLE_APPLICATION_CREDENTIALS as string,
+          "utf8"
+        );
+
         await github.addSecrets(projectHid, {
           NPM_TOKEN: NPM_TOKEN,
           VERCEL_TOKEN: VERCEL_TOKEN,
@@ -408,6 +430,8 @@ async function run() {
           VERCEL_APP_PROJECT_ID_STAGE: appProjectIdStage,
           VERCEL_UI_PROJECT_ID_STAGE: uiProjectIdStage,
           GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
+          GCLOUD_APP_YAML_BASE64_STAGE,
+          GCLOUD_SERVICE_ACCOUNT_JSON,
         });
       },
     },
