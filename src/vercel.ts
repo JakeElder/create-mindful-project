@@ -8,9 +8,9 @@ type VercelEnvVariable = {
 };
 
 async function vercel(
-  method: "POST" | "GET",
+  method: "POST" | "GET" | "PATCH",
   endpoint: string,
-  params: { [key: string]: any }
+  params?: { [key: string]: any }
 ) {
   const r = await fetch(`https://api.vercel.com${endpoint}`, {
     method,
@@ -33,15 +33,21 @@ export async function createProject({
   name,
   domain,
   env = [],
+  framework,
 }: {
   name: string;
   domain: string;
   env?: VercelEnvVariable[];
+  framework?: string;
 }) {
   const project = await vercel("POST", "/v6/projects", { name });
   await vercel("POST", `/v1/projects/${project.id}/alias`, {
     domain,
   });
+
+  if (typeof framework === "string") {
+    await vercel("PATCH", `/v2/projects/${project.id}`, { framework });
+  }
 
   if (env.length > 0) {
     await Promise.all(
@@ -50,4 +56,9 @@ export async function createProject({
   }
 
   return project;
+}
+
+export async function getSecretId(secretName: string) {
+  const { uid } = await vercel("GET", `/v3/now/secrets/${secretName}`);
+  return uid;
 }
