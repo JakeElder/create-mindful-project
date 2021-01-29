@@ -1,7 +1,10 @@
 {
   "name": "root",
   "scripts": {
-    "graduate": "npx lerna version --conventional-graduate"
+    "init-versioning": "yarn lerna:publish && git push --tags",
+    "version:beta": "npx lerna version --conventional-prerelease --preid beta --no-changelog --amend",
+    "version:graduate": "npx lerna version --conventional-graduate",
+    "lerna:publish": "npx lerna publish from-package"
   },
   "workspaces": {
     "packages": [

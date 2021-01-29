@@ -28,19 +28,13 @@ jobs:
           git config user.email 'jake@jakes.world'
           git config user.password ${GITHUB_TOKEN}
       - name: Version
-        run: |
-          npx lerna version \
-            --conventional-prerelease \
-            --preid beta \
-            --no-changelog \
-            --amend \
-            --yes
+        run: yarn version:beta --yes
       - name: Publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
-          npx lerna publish from-package --yes
+          yarn publish --yes
       - name: Push package.json's and tags
         run: |
           git push --force origin $GITHUB_HEAD_REF
