@@ -1,4 +1,5 @@
-name: Publish Beta
+{{=<% %>=}}
+name: Deploy to Stage
 
 on:
   pull_request:
@@ -19,13 +20,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: "14"
-      - name: Set up NPM auth
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          npm config set \
-            '//registry.npmjs.org/:_authToken' \
-            "${NPM_TOKEN}"
       - name: Set up Git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,35 +35,39 @@ jobs:
             --no-changelog \
             --amend \
             --yes
-          git push --force origin $GITHUB_HEAD_REF
       - name: Publish
-        run: npx lerna publish from-package --yes
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+          npx lerna publish from-package --yes
+      - name: Push package.json's and tags
+        run: |
+          git push --force origin $GITHUB_HEAD_REF
+          git push --tags
 
   deploy_strapi:
     name: Deploy Strapi
     runs-on: ubuntu-latest
-    needs: publish_packages_to_npm
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@master
         with:
-          key: ${{ secrets.SSH_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
-      - name: Git log
-        run: git log
-      - name: Push to Heroku
+          project_id: ${{ secrets.GCLOUD_PROJECT_ID_STAGE }}
+          service_account_key: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_JSON }}
+          export_default_credentials: true
+      - name: Push to Google Cloud
+        env:
+          GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID_STAGE }}
+          GCLOUD_APP_YAML_BASE64: ${{ secrets.GCLOUD_APP_YAML_BASE64_STAGE }}
         run: |
-          git remote add heroku git@heroku.com:{{projectHid}}-cms-stage.git
-          subtree=`
-            git subtree split \
-              --prefix packages/{{projectHid}}-cms \
-              HEAD
-          `
-          git push --force heroku ${subtree}:refs/heads/master
+          echo $GCLOUD_APP_YAML_BASE64 | base64 -d > packages/<% projectHid %>-cms/app.stage.yml
+          cat packages/<% projectHid %>-cms/app.stage.yml
+          yarn workspace @mindfulstudio/<% projectHid %>-cms deploy
 
   deploy_storybook:
     name: Deploy Storybook
@@ -94,24 +92,16 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
-      - name: Pull changes
-        run: git log
       - name: Install NPM Deps
         run: yarn install
       - name: Build
-        run: |
-          npx lerna run build \
-            --scope @mindfulstudio/{{projectHid}}-ui \
-            --stream
+        run: yarn workspace @mindfulstudio/<% projectHid %>-ui build
       - name: Deploy
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_UI_PROJECT_ID_STAGE }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          npx lerna run deploy \
-            --scope @mindfulstudio/{{projectHid}}-ui \
-            --stream
+        run: yarn workspace @mindfulstudio/<% projectHid %>-ui deploy
 
   deploy_next_js_app:
     name: Deploy Next.js app
@@ -126,14 +116,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: "14"
-      - name: Git log
-        run: git log
       - name: Deploy Build
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_APP_PROJECT_ID_STAGE }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          npx lerna run deploy \
-            --scope @mindfulstudio/{{projectHid}}-app \
-            --stream
+        run: yarn workspace @mindfulstudio/<% projectHid %>-app deploy

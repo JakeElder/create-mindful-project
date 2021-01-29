@@ -330,7 +330,13 @@ async function run() {
               type: "plain",
               key: "GRAPHQL_URL",
               value: `https://cms.stage.${domain}/graphql`,
-              target: ["preview", "production"],
+              target: ["production", "preview"],
+            },
+            {
+              type: "secret",
+              key: "NPM_TOKEN",
+              value: process.env.NPM_TOKEN as string,
+              target: ["production", "preview"],
             },
           ],
         });
