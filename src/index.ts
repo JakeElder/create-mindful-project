@@ -165,9 +165,9 @@ async function seedCMS({
     `--nsTo=${projectHid}.*`,
   ]);
 
-  fs.createReadStream(
-    path.join(path.dirname(__filename), "..", "cms.data")
-  ).pipe(seedProcess.stdin as Writable);
+  fs.createReadStream(path.join(__dirname, "..", "cms.data")).pipe(
+    seedProcess.stdin as Writable
+  );
 
   await seedProcess;
 
@@ -268,9 +268,9 @@ async function run() {
   let appProjectIdStage: string;
   let gcloudProjectIdStage: string;
   let cmsDatabaseUriStage: string;
-  let githubOriginUrlStage: string;
+  let githubOriginUrl: string;
 
-  const templateDir = path.join(path.dirname(__filename), "..", "template");
+  const templateDir = path.join(__dirname, "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
   const steps: Step[] = [
@@ -390,7 +390,7 @@ async function run() {
     {
       label: "Setting up Github",
       run: async (spinner) => {
-        githubOriginUrlStage = await github.createRepo({
+        githubOriginUrl = await github.createRepo({
           name: projectHid,
           replaceTakenRepoName: makeReplaceTakenIdFn({
             spinner,
@@ -462,7 +462,7 @@ async function run() {
     },
     {
       label: "Initialising Git",
-      run: () => initialiseGit({ destDir, originUrl: githubOriginUrlStage }),
+      run: () => initialiseGit({ destDir, originUrl: githubOriginUrl }),
     },
   ];
 
