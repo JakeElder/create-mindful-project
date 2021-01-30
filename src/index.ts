@@ -16,11 +16,14 @@ import PrettyError from "pretty-error";
 import passwd from "generate-password";
 import URI from "urijs";
 import execa from "execa";
+import { format as formatDate } from "date-fns";
+import chalk from "chalk";
+import boxen from "boxen";
+import { Writable } from "stream";
 import * as googlecloud from "./google-cloud";
 import * as vercel from "./vercel";
 import * as github from "./github";
 import * as mongo from "./mongo";
-import { Writable } from "stream";
 
 class PromptCancelledError extends Error {}
 class MissingEnvVarError extends Error {}
@@ -477,13 +480,25 @@ async function run() {
     {
       label: "installing and linking dependencies",
       run: async () => {
-        await execa("lerna", ["bootstrap"], { cwd: destDir });
+        // await execa("lerna", ["bootstrap"], { cwd: destDir });
       },
     },
   ];
 
+  console.log(
+    boxen("setting up development environment", {
+      borderStyle: "classic",
+      margin: { top: 1, bottom: 1 },
+      padding: { left: 1, right: 1 },
+    })
+  );
+
   for (let step of localSteps) {
-    let spinner = ora(step.label);
+    let spinner = ora({
+      prefixText: `${chalk.dim(`[${formatDate(new Date(), "HH:mm:ss")}]`)} ${
+        step.label
+      }`,
+    });
     spinner.start();
     try {
       await step.run(spinner);
@@ -493,6 +508,8 @@ async function run() {
     }
     spinner.succeed();
   }
+
+  console.log();
 }
 
 run().catch((e) => {

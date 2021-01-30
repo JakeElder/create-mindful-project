@@ -15,7 +15,10 @@
   },
   "dependencies": {
     "@octokit/core": "^3.2.5",
+    "boxen": "^5.0.0",
+    "chalk": "^4.1.0",
     "change-case": "^4.1.2",
+    "date-fns": "^2.16.1",
     "delay": "^4.4.0",
     "digest-fetch": "^1.1.5",
     "dotenv": "^8.2.0",
