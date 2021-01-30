@@ -4,6 +4,7 @@ import ora from "ora";
 import execa from "execa";
 import { Writable } from "stream";
 import * as template from "./template";
+import * as git from "./git";
 
 type LocalStepContext = {
   projectHid: string;
@@ -113,12 +114,12 @@ steps.push({
 steps.push({
   title: "initialising git",
   run: async ({ destDir }) => {
-    const git = (...args: string[]) => execa("git", args, { cwd: destDir });
-    await git("init");
-    await git("add", "--all");
-    await git("commit", "-m", "chore: initial commit [skip ci]");
-    await git("branch", "--move", "main");
-    await git("checkout", "-b", "develop");
+    git.cd(destDir);
+    await git.init();
+    await git.add("--all");
+    await git.commit("-m", "chore: initial commit [skip ci]");
+    await git.branch("--move", "main");
+    await git.checkout("-b", "develop");
   },
 });
 
