@@ -57,25 +57,6 @@ async function getResponses() {
   );
 }
 
-async function renamePackages({
-  destDir,
-  projectHid,
-}: {
-  destDir: string;
-  projectHid: string;
-}) {
-  const packages = ["tsconfig", "types", "cms", "ui", "app"];
-
-  await Promise.all(
-    packages.map((p) =>
-      fs.move(
-        path.join(destDir, "packages", p),
-        path.join(destDir, "packages", `${projectHid}-${p}`)
-      )
-    )
-  );
-}
-
 async function injectTemplateVars({
   destDir,
   projectName,
@@ -85,7 +66,7 @@ async function injectTemplateVars({
   destDir: string;
   projectName: string;
   projectHid: string;
-  cmsDatabaseUriStage: string;
+  cmsDatabaseUriStage?: string;
 }) {
   // Get recursive template directory listings
   const files = await lsrAsync(destDir);
@@ -112,74 +93,6 @@ async function injectTemplateVars({
       );
     })
   );
-}
-
-async function addEnvFiles({ destDir }: { destDir: string }) {
-  const packages = ["cms", "ui", "app"];
-
-  await Promise.all(
-    packages.map((p) =>
-      fs.copyFile(
-        path.join(destDir, "packages", p, ".env.example"),
-        path.join(destDir, "packages", p, ".env")
-      )
-    )
-  );
-}
-
-async function enableEnvFiles({
-  destDir,
-  projectHid,
-}: {
-  destDir: string;
-  projectHid: string;
-}) {
-  const packages = ["cms", "ui", "app"];
-  await Promise.all(
-    packages.map((p) =>
-      execa("direnv", ["allow"], {
-        cwd: path.join(destDir, "packages", `${projectHid}-${p}`),
-      })
-    )
-  );
-}
-
-async function installDeps({ destDir }: { destDir: string }) {
-  await execa("lerna", ["bootstrap"], { cwd: destDir });
-}
-
-async function seedCMS({
-  projectName,
-  projectHid,
-}: {
-  projectName: string;
-  projectHid: string;
-}) {
-  const seedProcess = execa("docker", [
-    "exec",
-    "-i",
-    "mongo",
-    "mongorestore",
-    "--archive",
-    "--nsFrom=ms.*",
-    `--nsTo=${projectHid}.*`,
-  ]);
-
-  fs.createReadStream(path.join(__dirname, "..", "cms.data")).pipe(
-    seedProcess.stdin as Writable
-  );
-
-  await seedProcess;
-
-  await execa("docker", [
-    "exec",
-    "-i",
-    "mongo",
-    "mongo",
-    projectHid,
-    "--eval",
-    `db.projects.updateOne({}, { $set: { name: "${projectName}"} })`,
-  ]);
 }
 
 async function initialiseGit({
@@ -273,200 +186,303 @@ async function run() {
   const templateDir = path.join(__dirname, "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  const steps: Step[] = [
+  // const _steps: Step[] = [
+  //   {
+  //     label: "Copying template files",
+  //     run: () => fs.copy(templateDir, destDir),
+  //   },
+  //   {
+  //     label: "Adding .env files",
+  //     run: () => addEnvFiles({ destDir }),
+  //   },
+  //   {
+  //     label: "Initialising CMS",
+  //     run: () => seedCMS({ projectName, projectHid }),
+  //   },
+
+  //   {
+  //     label: "Setting up Vercel UI project",
+  //     run: async () => {
+  //       const project = await vercel.createProject({
+  //         name: `${projectHid}-ui-stage`,
+  //         domain: `ui.stage.${domain}`,
+  //       });
+  //       uiProjectIdStage = project.id;
+  //     },
+  //   },
+  //   {
+  //     label: "Setting UI env variables",
+  //     run: () => {
+  //       return extendDotEnv(path.join(destDir, "packages", "ui", ".env"), {
+  //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+  //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+  //         VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
+  //       });
+  //     },
+  //   },
+  //   {
+  //     label: "Setting up Vercel App project",
+  //     run: async () => {
+  //       const project = await vercel.createProject({
+  //         name: `${projectHid}-app-stage`,
+  //         framework: "nextjs",
+  //         domain: `stage.${domain}`,
+  //         env: [
+  //           {
+  //             type: "plain",
+  //             key: "GRAPHQL_URL",
+  //             value: `https://cms.stage.${domain}/graphql`,
+  //             target: ["production", "preview"],
+  //           },
+  //           {
+  //             type: "secret",
+  //             key: "NPM_TOKEN",
+  //             value: await vercel.getSecretId("npm-token"),
+  //             target: ["production", "preview"],
+  //           },
+  //         ],
+  //       });
+  //       appProjectIdStage = project.id;
+  //     },
+  //   },
+  //   {
+  //     label: "Setting App env variables",
+  //     run: async () => {
+  //       await extendDotEnv(path.join(destDir, "packages", "app", ".env"), {
+  //         VERCEL_TOKEN: process.env.VERCEL_TOKEN,
+  //         VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+  //         VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
+  //       });
+  //     },
+  //   },
+  //   {
+  //     label: "Setting up Google Cloud",
+  //     run: async (spinner: ora.Ora) => {
+  //       const googleProjectName = `${projectName} CMS Stage`;
+  //       const idealProjectId = paramCase(googleProjectName);
+  //       async function replaceTakenId(takenId: string) {
+  //         spinner.stop();
+  //         const { compromiseProjectId } = await prompts({
+  //           type: "text",
+  //           name: "compromiseProjectId",
+  //           initial: takenId,
+  //           message: "This Google Project id is taken. What should the id be?",
+  //         });
+  //         spinner.start();
+  //         return compromiseProjectId;
+  //       }
+  //       const project = await googlecloud.setupProject(
+  //         googleProjectName,
+  //         idealProjectId,
+  //         replaceTakenId
+  //       );
+  //       gcloudProjectIdStage = project.projectId as string;
+  //       await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
+  //         GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
+  //       });
+  //     },
+  //   },
+  //   {
+  //     label: "Setting up Mongo DB",
+  //     run: async () => {
+  //       const password = passwd.generate();
+  //       await mongo.createUser(projectHid, password);
+  //       const srvAddress = await mongo.getConnectionString("Stage");
+
+  //       cmsDatabaseUriStage = URI(srvAddress)
+  //         .username(projectHid)
+  //         .password(password)
+  //         .pathname(projectHid)
+  //         .query({ retryWrites: "true", w: "majority" })
+  //         .toString();
+
+  //       await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
+  //         DATABASE_URI_STAGE: cmsDatabaseUriStage,
+  //       });
+  //     },
+  //   },
+  //   {
+  //     label: "Setting up Github",
+  //     run: async (spinner) => {
+  //       githubOriginUrl = await github.createRepo({
+  //         name: projectHid,
+  //         replaceTakenRepoName: makeReplaceTakenIdFn({
+  //           spinner,
+  //           resourceName: "repo name",
+  //         }),
+  //       });
+
+  //       const { NPM_TOKEN, VERCEL_TOKEN, VERCEL_ORG_ID } = process.env;
+
+  //       if (
+  //         typeof NPM_TOKEN !== "string" ||
+  //         typeof VERCEL_TOKEN !== "string" ||
+  //         typeof VERCEL_ORG_ID !== "string"
+  //       ) {
+  //         throw new Error();
+  //       }
+
+  //       const GCLOUD_APP_YAML_BASE64_STAGE = await (async () => {
+  //         const tpl = await fs.readFile(
+  //           `${destDir}/packages/cms/app.stage.yml`,
+  //           "utf8"
+  //         );
+  //         const yml = Mustache.render(tpl, { cmsDatabaseUriStage });
+  //         return Buffer.from(yml).toString("base64");
+  //       })();
+
+  //       if (typeof process.env.GOOGLE_APPLICATION_CREDENTIALS !== "string") {
+  //         throw new MissingEnvVarError();
+  //       }
+
+  //       const GCLOUD_SERVICE_ACCOUNT_JSON = await fs.readFile(
+  //         process.env.GOOGLE_APPLICATION_CREDENTIALS as string,
+  //         "utf8"
+  //       );
+
+  //       await github.addSecrets(projectHid, {
+  //         NPM_TOKEN: NPM_TOKEN,
+  //         VERCEL_TOKEN: VERCEL_TOKEN,
+  //         VERCEL_ORG_ID: VERCEL_ORG_ID,
+  //         VERCEL_APP_PROJECT_ID_STAGE: appProjectIdStage,
+  //         VERCEL_UI_PROJECT_ID_STAGE: uiProjectIdStage,
+  //         GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
+  //         GCLOUD_APP_YAML_BASE64_STAGE,
+  //         GCLOUD_SERVICE_ACCOUNT_JSON,
+  //       });
+  //     },
+  //   },
+
+  //   {
+  //     label: "Injecting template variables",
+  //     run: () =>
+  //       injectTemplateVars({
+  //         destDir,
+  //         projectName,
+  //         projectHid,
+  //         cmsDatabaseUriStage,
+  //       }),
+  //   },
+
+  //   {
+  //     label: "Renaming packages",
+  //     run: () => renamePackages({ projectHid, destDir }),
+  //   },
+  //   {
+  //     label: "Enabling env vars",
+  //     run: () => enableEnvFiles({ destDir, projectHid }),
+  //   },
+  //   {
+  //     label: "Installing and linking dependencies",
+  //     run: () => installDeps({ destDir }),
+  //   },
+  //   {
+  //     label: "Initialising Git",
+  //     run: () => initialiseGit({ destDir, originUrl: githubOriginUrl }),
+  //   },
+  // ];
+
+  const localSteps: Step[] = [
     {
-      label: "Copying template files",
+      label: "creating work tree",
       run: () => fs.copy(templateDir, destDir),
     },
+
     {
-      label: "Adding .env files",
-      run: () => addEnvFiles({ destDir }),
-    },
-    {
-      label: "Initialising CMS",
-      run: () => seedCMS({ projectName, projectHid }),
-    },
-    {
-      label: "Setting up Vercel UI project",
+      label: "adding .env files",
       run: async () => {
-        const project = await vercel.createProject({
-          name: `${projectHid}-ui-stage`,
-          domain: `ui.stage.${domain}`,
-        });
-        uiProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting UI env variables",
-      run: () => {
-        return extendDotEnv(path.join(destDir, "packages", "ui", ".env"), {
-          VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-          VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-          VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
-        });
-      },
-    },
-    {
-      label: "Setting up Vercel App project",
-      run: async () => {
-        const project = await vercel.createProject({
-          name: `${projectHid}-app-stage`,
-          framework: "nextjs",
-          domain: `stage.${domain}`,
-          env: [
-            {
-              type: "plain",
-              key: "GRAPHQL_URL",
-              value: `https://cms.stage.${domain}/graphql`,
-              target: ["production", "preview"],
-            },
-            {
-              type: "secret",
-              key: "NPM_TOKEN",
-              value: await vercel.getSecretId("npm-token"),
-              target: ["production", "preview"],
-            },
-          ],
-        });
-        appProjectIdStage = project.id;
-      },
-    },
-    {
-      label: "Setting App env variables",
-      run: async () => {
-        await extendDotEnv(path.join(destDir, "packages", "app", ".env"), {
-          VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-          VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-          VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
-        });
-      },
-    },
-    {
-      label: "Setting up Google Cloud",
-      run: async (spinner: ora.Ora) => {
-        const googleProjectName = `${projectName} CMS Stage`;
-        const idealProjectId = paramCase(googleProjectName);
-        async function replaceTakenId(takenId: string) {
-          spinner.stop();
-          const { compromiseProjectId } = await prompts({
-            type: "text",
-            name: "compromiseProjectId",
-            initial: takenId,
-            message: "This Google Project id is taken. What should the id be?",
-          });
-          spinner.start();
-          return compromiseProjectId;
-        }
-        const project = await googlecloud.setupProject(
-          googleProjectName,
-          idealProjectId,
-          replaceTakenId
+        const packages = ["cms", "ui", "app"];
+        await Promise.all(
+          packages.map((p) =>
+            fs.copyFile(
+              path.join(destDir, "packages", p, ".env.example"),
+              path.join(destDir, "packages", p, ".env")
+            )
+          )
         );
-        gcloudProjectIdStage = project.projectId as string;
-        await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
-          GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
-        });
       },
     },
+
     {
-      label: "Setting up Mongo DB",
+      label: "seeding cms",
       run: async () => {
-        const password = passwd.generate();
-        await mongo.createUser(projectHid, password);
-        const srvAddress = await mongo.getConnectionString("Stage");
-
-        cmsDatabaseUriStage = URI(srvAddress)
-          .username(projectHid)
-          .password(password)
-          .pathname(projectHid)
-          .query({ retryWrites: "true", w: "majority" })
-          .toString();
-
-        await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
-          DATABASE_URI_STAGE: cmsDatabaseUriStage,
-        });
-      },
-    },
-    {
-      label: "Setting up Github",
-      run: async (spinner) => {
-        githubOriginUrl = await github.createRepo({
-          name: projectHid,
-          replaceTakenRepoName: makeReplaceTakenIdFn({
-            spinner,
-            resourceName: "repo name",
-          }),
-        });
-
-        const { NPM_TOKEN, VERCEL_TOKEN, VERCEL_ORG_ID } = process.env;
-
-        if (
-          typeof NPM_TOKEN !== "string" ||
-          typeof VERCEL_TOKEN !== "string" ||
-          typeof VERCEL_ORG_ID !== "string"
-        ) {
-          throw new Error();
-        }
-
-        const GCLOUD_APP_YAML_BASE64_STAGE = await (async () => {
-          const tpl = await fs.readFile(
-            `${destDir}/packages/cms/app.stage.yml`,
-            "utf8"
-          );
-          const yml = Mustache.render(tpl, { cmsDatabaseUriStage });
-          return Buffer.from(yml).toString("base64");
-        })();
-
-        if (typeof process.env.GOOGLE_APPLICATION_CREDENTIALS !== "string") {
-          throw new MissingEnvVarError();
-        }
-
-        const GCLOUD_SERVICE_ACCOUNT_JSON = await fs.readFile(
-          process.env.GOOGLE_APPLICATION_CREDENTIALS as string,
-          "utf8"
+        const seedProcess = execa("docker", [
+          "exec",
+          "-i",
+          "mongo",
+          "mongorestore",
+          "--archive",
+          "--nsFrom=ms.*",
+          `--nsTo=${projectHid}.*`,
+        ]);
+        fs.createReadStream(path.join(__dirname, "..", "cms.data")).pipe(
+          seedProcess.stdin as Writable
         );
 
-        await github.addSecrets(projectHid, {
-          NPM_TOKEN: NPM_TOKEN,
-          VERCEL_TOKEN: VERCEL_TOKEN,
-          VERCEL_ORG_ID: VERCEL_ORG_ID,
-          VERCEL_APP_PROJECT_ID_STAGE: appProjectIdStage,
-          VERCEL_UI_PROJECT_ID_STAGE: uiProjectIdStage,
-          GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
-          GCLOUD_APP_YAML_BASE64_STAGE,
-          GCLOUD_SERVICE_ACCOUNT_JSON,
-        });
+        await seedProcess;
+
+        await execa("docker", [
+          "exec",
+          "-i",
+          "mongo",
+          "mongo",
+          projectHid,
+          "--eval",
+          `db.projects.updateOne({}, { $set: { name: "${projectName}"} })`,
+        ]);
       },
     },
+
     {
-      label: "Injecting template variables",
-      run: () =>
-        injectTemplateVars({
+      label: "injecting template variables",
+      run: async () => {
+        await injectTemplateVars({
           destDir,
           projectName,
           projectHid,
-          cmsDatabaseUriStage,
-        }),
+        });
+      },
     },
+
     {
-      label: "Renaming packages",
-      run: () => renamePackages({ projectHid, destDir }),
+      label: "prefixing packages",
+      run: async () => {
+        const packages = ["tsconfig", "types", "cms", "ui", "app"];
+
+        await Promise.all(
+          packages.map((p) =>
+            fs.move(
+              path.join(destDir, "packages", p),
+              path.join(destDir, "packages", `${projectHid}-${p}`)
+            )
+          )
+        );
+      },
     },
+
     {
-      label: "Enabling env vars",
-      run: () => enableEnvFiles({ destDir, projectHid }),
+      label: "enabling environment variables",
+      run: async () => {
+        const packages = ["cms", "ui", "app"];
+        await Promise.all(
+          packages.map((p) =>
+            execa("direnv", ["allow"], {
+              cwd: path.join(destDir, "packages", `${projectHid}-${p}`),
+            })
+          )
+        );
+      },
     },
+
     {
-      label: "Installing and linking dependencies",
-      run: () => installDeps({ destDir }),
-    },
-    {
-      label: "Initialising Git",
-      run: () => initialiseGit({ destDir, originUrl: githubOriginUrl }),
+      label: "installing and linking dependencies",
+      run: async () => {
+        await execa("lerna", ["bootstrap"], { cwd: destDir });
+      },
     },
   ];
 
-  for (let step of steps) {
+  for (let step of localSteps) {
     let spinner = ora(step.label);
     spinner.start();
     try {
