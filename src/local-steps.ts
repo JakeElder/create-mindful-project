@@ -1,22 +1,16 @@
 import fs from "fs-extra";
 import path from "path";
-import ora from "ora";
 import execa from "execa";
 import { Writable } from "stream";
 import * as template from "./template";
 import * as git from "./git";
+import { Step } from "./steppy";
 
-type LocalStepContext = {
+export type LocalStepContext = {
   projectHid: string;
   projectName: string;
-  spinner: ora.Ora;
   templateDir: string;
   destDir: string;
-};
-
-type Step<T> = {
-  title: string;
-  run: (ctx: T) => Promise<void>;
 };
 
 const steps: Step<LocalStepContext>[] = [];

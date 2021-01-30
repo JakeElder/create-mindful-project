@@ -14,16 +14,15 @@ import PrettyError from "pretty-error";
 import passwd from "generate-password";
 import URI from "urijs";
 import execa from "execa";
-import { format as formatDate } from "date-fns";
 import chalk from "chalk";
-import boxen from "boxen";
-import { Writable } from "stream";
+
 import * as googlecloud from "./google-cloud";
 import * as vercel from "./vercel";
 import * as github from "./github";
 import * as mongo from "./mongo";
+import * as steppy from "./steppy";
 
-import localSteps from "./local-steps";
+import localSteps, { LocalStepContext } from "./local-steps";
 
 class PromptCancelledError extends Error {}
 class MissingEnvVarError extends Error {}
@@ -340,31 +339,14 @@ async function run() {
   const templateDir = path.join(__dirname, "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  console.log(
-    boxen("setting up development environment", {
-      borderStyle: "classic",
-      margin: { left: 0, top: 1, right: 0, bottom: 1 },
-      padding: { left: 1, top: 0, right: 1, bottom: 0 },
-    })
-  );
+  steppy.head("setting up development environment");
 
-  for (let step of localSteps) {
-    let spinner = ora({
-      prefixText: `${chalk.dim(`[${formatDate(new Date(), "HH:mm:ss")}]`)} ${
-        step.title
-      }`,
-    });
-    spinner.start();
-    await step
-      .run({ spinner, destDir, templateDir, projectHid, projectName })
-      .catch((e) => {
-        spinner.fail();
-        throw e;
-      });
-    spinner.succeed();
-  }
-
-  console.log();
+  await steppy.run<LocalStepContext>(localSteps, {
+    destDir,
+    templateDir,
+    projectHid,
+    projectName,
+  });
 }
 
 run().catch((e) => {
