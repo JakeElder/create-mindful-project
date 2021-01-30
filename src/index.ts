@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 
 import "source-map-support/register";
-import Mustache from "mustache";
 import fs from "fs-extra";
+import path from "path";
 import prompts from "prompts";
 import { paramCase } from "change-case";
-import path from "path";
 import { lsrAsync } from "lsr";
 import { isBinaryFile } from "isbinaryfile";
-import filterAsync from "node-filter-async";
 import ora from "ora";
 import dotenv from "dotenv";
 import dotenvStringify from "dotenv-stringify";
@@ -24,6 +22,8 @@ import * as googlecloud from "./google-cloud";
 import * as vercel from "./vercel";
 import * as github from "./github";
 import * as mongo from "./mongo";
+
+import localSteps from "./local-steps";
 
 class PromptCancelledError extends Error {}
 class MissingEnvVarError extends Error {}
@@ -57,44 +57,6 @@ async function getResponses() {
         throw new PromptCancelledError();
       },
     }
-  );
-}
-
-async function injectTemplateVars({
-  destDir,
-  projectName,
-  projectHid,
-  cmsDatabaseUriStage,
-}: {
-  destDir: string;
-  projectName: string;
-  projectHid: string;
-  cmsDatabaseUriStage?: string;
-}) {
-  // Get recursive template directory listings
-  const files = await lsrAsync(destDir);
-
-  // Filter out directories and binary files
-  const nonBinaryFiles = await filterAsync(files, async (file) => {
-    if (file.isDirectory()) {
-      return Promise.resolve(false);
-    }
-    return !(await isBinaryFile(file.fullPath));
-  });
-
-  // Inject template variables and rewrite to disk
-  await Promise.all(
-    nonBinaryFiles.map(async (file) => {
-      const c = await fs.readFile(file.fullPath);
-      await fs.writeFile(
-        file.fullPath,
-        Mustache.render(c.toString(), {
-          projectName,
-          projectHid,
-          cmsDatabaseUriStage,
-        })
-      );
-    })
   );
 }
 
@@ -162,13 +124,6 @@ function makeReplaceTakenIdFn({
   };
 }
 
-type Step = {
-  label: string;
-  run: (spinner: ora.Ora) => Promise<void>;
-  skip?: boolean;
-  isolate?: boolean;
-};
-
 async function run() {
   const {
     projectName,
@@ -185,9 +140,6 @@ async function run() {
   let gcloudProjectIdStage: string;
   let cmsDatabaseUriStage: string;
   let githubOriginUrl: string;
-
-  const templateDir = path.join(__dirname, "..", "template");
-  const destDir = path.join(process.cwd(), projectHid);
 
   // const _steps: Step[] = [
   //   {
@@ -385,127 +337,30 @@ async function run() {
   //   },
   // ];
 
-  const localSteps: Step[] = [
-    {
-      label: "creating work tree",
-      run: () => fs.copy(templateDir, destDir),
-    },
-
-    {
-      label: "adding .env files",
-      run: async () => {
-        const packages = ["cms", "ui", "app"];
-        await Promise.all(
-          packages.map((p) =>
-            fs.copyFile(
-              path.join(destDir, "packages", p, ".env.example"),
-              path.join(destDir, "packages", p, ".env")
-            )
-          )
-        );
-      },
-    },
-
-    {
-      label: "seeding cms",
-      run: async () => {
-        const seedProcess = execa("docker", [
-          "exec",
-          "-i",
-          "mongo",
-          "mongorestore",
-          "--archive",
-          "--nsFrom=ms.*",
-          `--nsTo=${projectHid}.*`,
-        ]);
-        fs.createReadStream(path.join(__dirname, "..", "cms.data")).pipe(
-          seedProcess.stdin as Writable
-        );
-
-        await seedProcess;
-
-        await execa("docker", [
-          "exec",
-          "-i",
-          "mongo",
-          "mongo",
-          projectHid,
-          "--eval",
-          `db.projects.updateOne({}, { $set: { name: "${projectName}"} })`,
-        ]);
-      },
-    },
-
-    {
-      label: "injecting template variables",
-      run: async () => {
-        await injectTemplateVars({
-          destDir,
-          projectName,
-          projectHid,
-        });
-      },
-    },
-
-    {
-      label: "prefixing packages",
-      run: async () => {
-        const packages = ["tsconfig", "types", "cms", "ui", "app"];
-
-        await Promise.all(
-          packages.map((p) =>
-            fs.move(
-              path.join(destDir, "packages", p),
-              path.join(destDir, "packages", `${projectHid}-${p}`)
-            )
-          )
-        );
-      },
-    },
-
-    {
-      label: "enabling environment variables",
-      run: async () => {
-        const packages = ["cms", "ui", "app"];
-        await Promise.all(
-          packages.map((p) =>
-            execa("direnv", ["allow"], {
-              cwd: path.join(destDir, "packages", `${projectHid}-${p}`),
-            })
-          )
-        );
-      },
-    },
-
-    {
-      label: "installing and linking dependencies",
-      run: async () => {
-        // await execa("lerna", ["bootstrap"], { cwd: destDir });
-      },
-    },
-  ];
+  const templateDir = path.join(__dirname, "..", "template");
+  const destDir = path.join(process.cwd(), projectHid);
 
   console.log(
     boxen("setting up development environment", {
       borderStyle: "classic",
-      margin: { top: 1, bottom: 1 },
-      padding: { left: 1, right: 1 },
+      margin: { left: 0, top: 1, right: 0, bottom: 1 },
+      padding: { left: 1, top: 0, right: 1, bottom: 0 },
     })
   );
 
   for (let step of localSteps) {
     let spinner = ora({
       prefixText: `${chalk.dim(`[${formatDate(new Date(), "HH:mm:ss")}]`)} ${
-        step.label
+        step.title
       }`,
     });
     spinner.start();
-    try {
-      await step.run(spinner);
-    } catch (e) {
-      spinner.fail();
-      throw e;
-    }
+    await step
+      .run({ spinner, destDir, templateDir, projectHid, projectName })
+      .catch((e) => {
+        spinner.fail();
+        throw e;
+      });
     spinner.succeed();
   }
 
