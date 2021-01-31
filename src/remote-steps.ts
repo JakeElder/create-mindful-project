@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { Step } from "./steppy";
 import * as vercel from "./vercel";
 
@@ -11,23 +10,21 @@ export type Outputs = {
 const steps: Step<Context, Outputs>[] = [];
 
 steps.push({
-  group: chalk.blue("[vercel]"),
+  group: "vercel",
   title: "creating ui project",
   run: async ({ projectHid, domain }) => {
-    const project = await vercel.createProject({
-      name: `${projectHid}-ui-stage`,
-      domain: `ui.stage.${domain}`,
-    });
-    return { projectId: "a" };
+    // const project = await vercel.createProject({
+    //   name: `${projectHid}-ui-stage`,
+    //   domain: `ui.stage.${domain}`,
+    // });
+    return { projectId: "aa" };
   },
 });
 
 steps.push({
-  group: chalk.blue("[vercel]"),
+  group: "vercel",
   title: "doing next thing",
-  run: async (ctx) => {
-    console.log("outputs", ctx);
-  },
+  run: async (ctx) => {},
 });
 
 export default steps;

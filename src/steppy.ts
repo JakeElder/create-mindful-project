@@ -21,21 +21,46 @@ function formattedDate() {
   return chalk.dim(`${formatDate(new Date(), "HH:mm:ss")}`);
 }
 
+function formatTitle({
+  group,
+  title,
+  formatGroup,
+}: {
+  group?: string;
+  title: string;
+  formatGroup: (group: string) => string;
+}) {
+  if (typeof group === "string") {
+    return `[${formattedDate()}] ${formatGroup(group)} ${title}`;
+  }
+  return `[${formattedDate()}] ${title}`;
+}
+
 export async function run<AdditionalContext, Outputs>(
   steps: Step<AdditionalContext, Outputs>[],
-  additionalContext: AdditionalContext
+  additionalContext: AdditionalContext,
+  options?: {
+    formatGroup?: (group: string) => string;
+  }
 ): Promise<NonVoid<Outputs>> {
   let outputs: Partial<Outputs> = {};
 
+  const formatGroup = options?.formatGroup || ((g) => `[${g}]`);
+
   for (let step of steps) {
     let spinner = ora({
-      prefixText: `[${formattedDate()}] ${step.title}`,
+      prefixText: formatTitle({
+        group: step.group,
+        title: step.title as string,
+        formatGroup,
+      }),
     }).start();
 
     const result = await step
       .run({ spinner, ...additionalContext })
       .catch((e) => {
         spinner.fail();
+        console.log();
         throw e;
       });
 

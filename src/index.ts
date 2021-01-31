@@ -13,6 +13,7 @@ import passwd from "generate-password";
 import URI from "urijs";
 import execa from "execa";
 import Mustache from "mustache";
+import chalk from "chalk";
 
 import * as googlecloud from "./google-cloud";
 import * as vercel from "./vercel";
@@ -290,7 +291,7 @@ async function run() {
   const templateDir = path.join(__dirname, "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  steppy.head("setting up development environment");
+  // steppy.head("setting up development environment");
 
   // await steppy.run<LocalStepContext>(localSteps, {
   //   destDir,
@@ -301,15 +302,20 @@ async function run() {
 
   steppy.head("setting up stage environment");
 
+  function formatGroup(group: string) {
+    if (group === "vercel") {
+      return chalk.magenta("[vercel]");
+    }
+    return `[${group}]`;
+  }
+
   const outputs = await steppy.run<RemoteStepContext, RemoteStepOutputs>(
     remoteSteps,
-    {
-      projectHid,
-      domain,
-    }
+    { projectHid, domain },
+    { formatGroup }
   );
 
-  outputs["creating ui project"];
+  console.log();
 }
 
 run().catch((e) => {
