@@ -20,8 +20,11 @@ import * as github from "./github";
 import * as mongo from "./mongo";
 import * as steppy from "./steppy";
 
-import localSteps, { LocalStepContext } from "./local-steps";
-import remoteSteps, { Context as RemoteStepContext } from "./remote-steps";
+import localSteps, { Context as LocalStepContext } from "./local-steps";
+import remoteSteps, {
+  Context as RemoteStepContext,
+  Outputs as RemoteStepOutputs,
+} from "./remote-steps";
 
 class PromptCancelledError extends Error {}
 class MissingEnvVarError extends Error {}
@@ -298,12 +301,15 @@ async function run() {
 
   steppy.head("setting up stage environment");
 
-  const outputs = await steppy.run<RemoteStepContext>(remoteSteps, {
-    projectHid,
-    domain,
-  });
+  const outputs = await steppy.run<RemoteStepContext, RemoteStepOutputs>(
+    remoteSteps,
+    {
+      projectHid,
+      domain,
+    }
+  );
 
-  console.log(outputs);
+  outputs["creating ui project"];
 }
 
 run().catch((e) => {

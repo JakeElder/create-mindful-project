@@ -6,14 +6,24 @@ import * as template from "./template";
 import * as git from "./git";
 import { Step } from "./steppy";
 
-export type LocalStepContext = {
+export type Context = {
   projectHid: string;
   projectName: string;
   templateDir: string;
   destDir: string;
 };
 
-const steps: Step<LocalStepContext>[] = [];
+export type Outputs = {
+  "creating work tree": void;
+  "adding default .env files": void;
+  "seeding cms database": void;
+  "injecting template variables": void;
+  "prefixing packages": void;
+  "enabling environment variables": void;
+  "initialising git": void;
+};
+
+const steps: Step<Context, Outputs>[] = [];
 
 steps.push({
   title: "creating work tree",

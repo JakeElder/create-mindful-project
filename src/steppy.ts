@@ -3,43 +3,50 @@ import ora, { Ora } from "ora";
 import { format as formatDate } from "date-fns";
 import boxen from "boxen";
 
-export type Step<T> = {
-  group?: string;
-  title: string;
-  run: (ctx: RunContext<T>, outputs: { [key: string]: any }) => Promise<any>;
-};
+type NonVoid<T> = { [P in keyof T as T[P] extends void ? never : P]: T[P] };
 
-export type RunContext<T> = {
+export type Step<AdditionalContext, Outputs> = {
+  [K in keyof Outputs]: {
+    group?: string;
+    title: K;
+    run: (ctx: RunContext<AdditionalContext>) => Promise<Outputs[K]>;
+  };
+}[keyof Outputs];
+
+export type RunContext<AdditionalContext> = {
   spinner: Ora;
-} & T;
+} & AdditionalContext;
 
-export async function run<T>(
-  steps: Step<T>[],
-  additionalContext: T
-): Promise<{ [key: string]: any }> {
-  let outputs = {};
+function formattedDate() {
+  return chalk.dim(`${formatDate(new Date(), "HH:mm:ss")}`);
+}
+
+export async function run<AdditionalContext, Outputs>(
+  steps: Step<AdditionalContext, Outputs>[],
+  additionalContext: AdditionalContext
+): Promise<NonVoid<Outputs>> {
+  let outputs: Partial<Outputs> = {};
 
   for (let step of steps) {
     let spinner = ora({
-      prefixText: `${chalk.dim(`[${formatDate(new Date(), "HH:mm:ss")}]`)} ${
-        step.title
-      }`,
-    });
-    spinner.start();
+      prefixText: `[${formattedDate()}] ${step.title}`,
+    }).start();
+
     const result = await step
-      .run({ spinner, ...additionalContext }, outputs)
+      .run({ spinner, ...additionalContext })
       .catch((e) => {
         spinner.fail();
         throw e;
       });
-    outputs = {
-      ...outputs,
-      [step.title]: result,
-    };
+
+    if (typeof result !== "undefined") {
+      outputs = { ...outputs, [step.title]: result };
+    }
+
     spinner.succeed();
   }
 
-  return outputs;
+  return (outputs as unknown) as NonVoid<Outputs>;
 }
 
 export function head(message: string) {
