@@ -9,7 +9,10 @@ export type Step<AdditionalContext, Outputs> = {
   [K in keyof Outputs]: {
     group?: string;
     title: K;
-    run: (ctx: RunContext<AdditionalContext>) => Promise<Outputs[K]>;
+    run: (
+      ctx: RunContext<AdditionalContext>,
+      outputs: NonVoid<Outputs>
+    ) => Promise<Outputs[K]>;
   };
 }[keyof Outputs];
 
@@ -57,7 +60,10 @@ export async function run<AdditionalContext, Outputs>(
     }).start();
 
     const result = await step
-      .run({ spinner, ...additionalContext })
+      .run(
+        { spinner, ...additionalContext },
+        (outputs as unknown) as NonVoid<Outputs>
+      )
       .catch((e) => {
         spinner.fail();
         console.log();

@@ -112,8 +112,8 @@ export async function setupProject(
   name: string,
   projectId: string,
   replaceTakenId: (takenId: string) => Promise<string>
-): Promise<cloudresourcemanager_v1.Schema$Project> {
-  let project: cloudresourcemanager_v1.Schema$Project;
+): Promise<Schema$Project> {
+  let project: Schema$Project;
 
   try {
     project = await createProject({ name, projectId });
@@ -126,6 +126,7 @@ export async function setupProject(
   }
 
   if (
+    typeof project.createTime !== "string" ||
     typeof project.projectNumber !== "string" ||
     typeof project.projectId !== "string"
   ) {
