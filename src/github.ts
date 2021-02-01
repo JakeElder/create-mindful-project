@@ -3,35 +3,35 @@ import sodium from "tweetsodium";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-type GithubError = {
-  field: string;
-  code: string;
-};
-
-export async function createRepo({
-  name,
-  replaceTakenRepoName,
-}: {
-  name: string;
-  replaceTakenRepoName: (takenId: string) => Promise<string>;
-}): Promise<string> {
+export async function checkRepoExists(repo: string) {
   try {
-    const r = await octokit.request("POST /orgs/mindful-studio/repos", {
+    const r = await octokit.request(`GET /repos/mindful-studio/${repo}`, {
       org: "mindful-studio",
-      name,
+      repo,
     });
-    return r.data.ssh_url;
+    return r.status >= 200 && r.status < 300;
   } catch (e) {
-    const hasNameTakenError = e.errors.some(
-      (e: GithubError) => e.field === "name" && e.code === "custom"
-    );
-    if (hasNameTakenError) {
-      const compromiseName = await replaceTakenRepoName(name);
-      return createRepo({ name: compromiseName, replaceTakenRepoName });
-    } else {
-      throw e;
+    if (e.status === 404) {
+      return false;
     }
+    throw e;
   }
+}
+
+export async function getRepo(repo: string) {
+  const { data } = await octokit.request(`GET /repos/mindful-studio/${repo}`, {
+    org: "mindful-studio",
+    repo,
+  });
+  return data;
+}
+
+export async function createRepo({ name }: { name: string }): Promise<string> {
+  const r = await octokit.request("POST /orgs/mindful-studio/repos", {
+    org: "mindful-studio",
+    name,
+  });
+  return r.data.ssh_url;
 }
 
 type SecretMap = {

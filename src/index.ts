@@ -10,20 +10,9 @@ import path from "path";
 
 import * as steppy from "./steppy";
 
-import localSteps, {
-  Context as LocalStepContext,
-  Outputs as LocalStepOutputs,
-} from "./local-steps";
-
-import remoteSteps, {
-  Context as RemoteStepContext,
-  Outputs as RemoteStepOutputs,
-} from "./remote-steps";
-
-import linkSteps, {
-  Context as LinkStepContext,
-  Outputs as LinkStepOutputs,
-} from "./link-steps";
+import * as SetupLocalEnv from "./jobs/setup-local-env";
+import * as SetupGithub from "./jobs/setup-github";
+import * as SetupRemoteEnv from "./jobs/setup-remote-env";
 
 class PromptCancelledError extends Error {}
 
@@ -33,6 +22,12 @@ type EnvVars = {
   VERCEL_ORG_ID: string;
   GOOGLE_APPLICATION_CREDENTIALS: string;
 };
+
+export type Caveat =
+  | "GITHUB_REPO_EXISTS"
+  | "GCLOUD_PROJECT_EXISTS"
+  | "ATLAS_USER_EXISTS"
+  | "VERCEL_PROJECT_EXISTS";
 
 export type EnvDescriptor = {
   name: string;
@@ -104,6 +99,9 @@ function formatGroup(group: string) {
   if (group === "mongo") {
     return chalk.yellow(`[${group}]`);
   }
+  if (group === "local") {
+    return chalk.grey(`[${group}]`);
+  }
   return `[${group}]`;
 }
 
@@ -124,22 +122,39 @@ async function run() {
   const templateDir = path.join(__dirname, "..", "template");
   const destDir = path.join(process.cwd(), projectHid);
 
-  steppy.head("setting up development environment");
-  await steppy.run<LocalStepContext, LocalStepOutputs>(localSteps, {
-    destDir,
-    templateDir,
-    projectHid,
-    projectName,
-  });
-
   const mongoPassword = passwd.generate();
 
+  steppy.head("setting up dev environment");
+  await steppy.run<SetupLocalEnv.Context, SetupLocalEnv.Outputs, Caveat>(
+    SetupLocalEnv.steps,
+    {
+      projectHid,
+      destDir,
+      templateDir,
+      projectName,
+    },
+    { formatGroup }
+  );
+
+  steppy.head("setting up github");
+  await steppy.run<SetupGithub.Context, SetupGithub.Outputs, Caveat>(
+    SetupGithub.steps,
+    {
+      destDir,
+      projectHid,
+      vercelOrgId,
+      vercelToken,
+      npmToken,
+      gcloudCredentialsFile,
+    },
+    {
+      formatGroup,
+    }
+  );
+
   steppy.head("setting up stage environment");
-  const setupStageOutputs = await steppy.run<
-    RemoteStepContext,
-    RemoteStepOutputs
-  >(
-    remoteSteps,
+  await steppy.run<SetupRemoteEnv.Context, SetupRemoteEnv.Outputs, Caveat>(
+    SetupRemoteEnv.steps,
     {
       projectName,
       projectHid,
@@ -153,45 +168,20 @@ async function run() {
         constantSuffix: "STAGE",
       },
       mongoPassword,
-      vercelOrgId,
       vercelToken,
-      npmToken,
-      gcloudCredentialsFile,
+      vercelOrgId,
     },
     { formatGroup }
   );
 
-  steppy.head("linking stage environment");
-  await steppy.run<LinkStepContext, LinkStepOutputs>(linkSteps, {
-    projectHid,
-    destDir,
-    env: {
-      name: "Stage",
-      shortName: "Stage",
-      slug: "stage",
-      nodeEnv: "stage",
-      constantSuffix: "STAGE",
-    },
-    vercelToken,
-    vercelOrgId,
-    cmsDatabaseUri: setupStageOutputs["getting database uri"].uri,
-    gcloudProjectId: setupStageOutputs["setting up google cloud"].projectId,
-    uiProjectId: setupStageOutputs["creating ui project"].projectId,
-    appProjectId: setupStageOutputs["creating app project"].projectId,
-    githubRepoUrl: setupStageOutputs["setting up github"].repoUrl,
-  });
-
   steppy.head("setting up production environment");
-  const setupProdOutputs = await steppy.run<
-    RemoteStepContext,
-    RemoteStepOutputs
-  >(
-    remoteSteps,
+  await steppy.run<SetupRemoteEnv.Context, SetupRemoteEnv.Outputs, Caveat>(
+    SetupRemoteEnv.steps,
     {
       projectName,
       projectHid,
       destDir,
-      domain,
+      domain: `${domain}`,
       env: {
         name: "Production",
         shortName: "Prod",
@@ -200,36 +190,14 @@ async function run() {
         constantSuffix: "PROD",
       },
       mongoPassword,
-      vercelOrgId,
       vercelToken,
-      npmToken,
-      gcloudCredentialsFile,
-      githubRepoUrl: setupStageOutputs["setting up github"].repoUrl,
-      mongoUserCreated: true,
+      vercelOrgId,
     },
     { formatGroup }
   );
 
-  steppy.head("linking production environment");
-  await steppy.run<LinkStepContext, LinkStepOutputs>(linkSteps, {
-    projectHid,
-    destDir,
-    env: {
-      name: "Production",
-      shortName: "Prod",
-      slug: "prod",
-      nodeEnv: "production",
-      constantSuffix: "PROD",
-    },
-    vercelToken,
-    vercelOrgId,
-    cmsDatabaseUri: setupProdOutputs["getting database uri"].uri,
-    gcloudProjectId: setupProdOutputs["setting up google cloud"].projectId,
-    uiProjectId: setupProdOutputs["creating ui project"].projectId,
-    appProjectId: setupProdOutputs["creating app project"].projectId,
-    githubRepoUrl: setupProdOutputs["setting up github"].repoUrl,
-    skipGit: true,
-  });
+  console.log();
+  console.log(steppy.caveats());
 }
 
 run().catch((e) => {

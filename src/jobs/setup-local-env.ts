@@ -2,9 +2,11 @@ import fs from "fs-extra";
 import path from "path";
 import execa from "execa";
 import { Writable } from "stream";
-import * as template from "./template";
-import * as git from "./git";
-import { Step } from "./steppy";
+
+import { Caveat } from "..";
+import * as template from "../template";
+import * as git from "../git";
+import { Step } from "../steppy";
 
 export type Context = {
   projectHid: string;
@@ -23,9 +25,14 @@ export type Outputs = {
   "initialising git": void;
 };
 
-const steps: Step<Context, Outputs>[] = [];
+function isWritable(v: any): v is Writable {
+  return v instanceof require("events") && typeof v.read === "function";
+}
+
+const steps: Step<Context, Outputs, Caveat>[] = [];
 
 steps.push({
+  group: "local",
   title: "creating work tree",
   run: async ({ templateDir, destDir }) => {
     await fs.copy(templateDir, destDir);
@@ -33,6 +40,7 @@ steps.push({
 });
 
 steps.push({
+  group: "local",
   title: "adding default .env files",
   run: async ({ destDir }) => {
     const packages = ["cms", "ui", "app"];
@@ -48,6 +56,7 @@ steps.push({
 });
 
 steps.push({
+  group: "local",
   title: "seeding cms database",
   run: async ({ projectHid, projectName }) => {
     const seedProcess = execa("docker", [
@@ -59,9 +68,13 @@ steps.push({
       "--nsFrom=ms.*",
       `--nsTo=${projectHid}.*`,
     ]);
-    fs.createReadStream(path.join(__dirname, "..", "cms.data")).pipe(
-      seedProcess.stdin as Writable
-    );
+
+    if (!isWritable(seedProcess.stdin)) {
+      throw new Error();
+    }
+
+    const seedFile = path.join(__dirname, "..", "..", "cms.data");
+    fs.createReadStream(seedFile).pipe(seedProcess.stdin);
 
     await seedProcess;
 
@@ -78,20 +91,18 @@ steps.push({
 });
 
 steps.push({
+  group: "local",
   title: "injecting template variables",
   run: async ({ destDir, projectName, projectHid }) => {
-    await template.directory(destDir, {
-      projectName,
-      projectHid,
-    });
+    await template.directory(destDir, { projectName, projectHid });
   },
 });
 
 steps.push({
+  group: "local",
   title: "prefixing packages",
   run: async ({ destDir, projectHid }) => {
     const packages = ["tsconfig", "types", "cms", "ui", "app"];
-
     await Promise.all(
       packages.map((p) =>
         fs.move(
@@ -104,6 +115,7 @@ steps.push({
 });
 
 steps.push({
+  group: "local",
   title: "enabling environment variables",
   run: async ({ destDir, projectHid }) => {
     const packages = ["cms", "ui", "app"];
@@ -118,6 +130,7 @@ steps.push({
 });
 
 steps.push({
+  group: "local",
   title: "initialising git",
   run: async ({ destDir }) => {
     git.cd(destDir);
@@ -129,4 +142,4 @@ steps.push({
   },
 });
 
-export default steps;
+export { steps };

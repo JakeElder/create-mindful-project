@@ -7,6 +7,13 @@ type VercelEnvVariable = {
   target: ("development" | "preview" | "production")[];
 };
 
+class VercelRequestError extends Error {
+  constructor(e: any) {
+    super(e.detail);
+    Object.assign(this, e);
+  }
+}
+
 async function vercel(
   method: "POST" | "GET" | "PATCH",
   endpoint: string,
@@ -22,11 +29,24 @@ async function vercel(
   });
 
   if (!r.ok) {
-    console.log(await r.json());
-    throw new Error("Failed Vercel API call");
+    throw new VercelRequestError(await r.json());
   }
 
   return r.json();
+}
+
+export function getProject(name: string) {
+  return vercel("GET", `/v6/projects/${name}`);
+}
+
+export async function checkProjectExists(name: string) {
+  try {
+    await vercel("GET", `/v6/projects/${name}`);
+    return true;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
 }
 
 export async function createProject({

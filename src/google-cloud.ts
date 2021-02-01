@@ -38,6 +38,28 @@ async function operationResult<T>(name: string, attempt = 1): Promise<T> {
   throw new OperationNotCompleteError();
 }
 
+export async function getProject(projectId: string) {
+  const resourcemanager = google.cloudresourcemanager("v1");
+  const res = await resourcemanager.projects.get({
+    projectId,
+    auth: await getAuth(),
+  });
+  return res.data;
+}
+
+export async function checkProjectExists(projectId: string) {
+  const resourcemanager = google.cloudresourcemanager("v1");
+  try {
+    const res = await resourcemanager.projects.get({
+      projectId,
+      auth: await getAuth(),
+    });
+    return res.status === 200;
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function createProject({
   name,
   projectId,
@@ -110,20 +132,11 @@ export async function createApp({ projectId }: { projectId: string }) {
 
 export async function setupProject(
   name: string,
-  projectId: string,
-  replaceTakenId: (takenId: string) => Promise<string>
+  projectId: string
 ): Promise<Schema$Project> {
   let project: Schema$Project;
 
-  try {
-    project = await createProject({ name, projectId });
-  } catch (e) {
-    if (e.response?.data.error.status === "ALREADY_EXISTS") {
-      const compromiseProjectId = await replaceTakenId(projectId);
-      return setupProject(name, compromiseProjectId, replaceTakenId);
-    }
-    throw e;
-  }
+  project = await createProject({ name, projectId });
 
   if (
     typeof project.createTime !== "string" ||

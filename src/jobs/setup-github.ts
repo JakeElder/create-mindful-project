@@ -1,0 +1,77 @@
+import fs from "fs-extra";
+
+import { Caveat } from "..";
+
+import * as git from "../git";
+import * as github from "../github";
+import { Step } from "../steppy";
+
+export type Context = {
+  destDir: string;
+  projectHid: string;
+  vercelOrgId: string;
+  vercelToken: string;
+  npmToken: string;
+  gcloudCredentialsFile: string;
+};
+
+export type Outputs = {
+  "setting up github": { repoUrl: string };
+  "adding git remote": void;
+};
+
+const steps: Step<Context, Outputs, Caveat>[] = [];
+
+steps.push({
+  group: "github",
+  title: "setting up github",
+  run: async ({
+    projectHid,
+    vercelOrgId,
+    vercelToken,
+    npmToken,
+    gcloudCredentialsFile,
+    caveat,
+  }) => {
+    const repoExists = await github.checkRepoExists(projectHid);
+
+    if (repoExists) {
+      caveat.add("GITHUB_REPO_EXISTS");
+      const repo = await github.getRepo(projectHid);
+      return { repoUrl: repo.ssh_url };
+    }
+
+    const repoUrl = await github.createRepo({ name: projectHid });
+
+    const gcloudServiceAccountJSON = await fs.readFile(
+      gcloudCredentialsFile,
+      "utf8"
+    );
+
+    await github.addSecrets(projectHid, {
+      NPM_TOKEN: npmToken,
+      VERCEL_TOKEN: vercelToken,
+      VERCEL_ORG_ID: vercelOrgId,
+      GCLOUD_SERVICE_ACCOUNT_JSON: gcloudServiceAccountJSON,
+    });
+
+    return { repoUrl };
+  },
+});
+
+steps.push({
+  group: "local",
+  title: "adding git remote",
+  run: async ({ destDir, caveat }, { "setting up github": { repoUrl } }) => {
+    git.cd(destDir);
+    await git.remote("add", "origin", repoUrl);
+    if (!caveat.exists("GITHUB_REPO_EXISTS")) {
+      await git.checkout("main");
+      await git.push("--set-upstream", "origin", "main");
+      await git.checkout("develop");
+      await git.push("--set-upstream", "origin", "develop");
+    }
+  },
+});
+
+export { steps };

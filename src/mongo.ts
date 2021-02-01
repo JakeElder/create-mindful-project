@@ -7,6 +7,13 @@ const df = new DigestFetch(
   process.env.MONGO_USER_TOKEN
 );
 
+class MongoRequestError extends Error {
+  constructor(e: any) {
+    super(e.detail);
+    Object.assign(this, e);
+  }
+}
+
 async function mongo(
   method: "POST" | "GET",
   endpoint: string,
@@ -25,11 +32,22 @@ async function mongo(
   );
 
   if (!r.ok) {
-    console.log(await r.json());
-    throw new Error("Failed Mongo API call");
+    throw new MongoRequestError(await r.json());
   }
 
   return r.json();
+}
+
+export async function checkUserExists(name: string) {
+  try {
+    await mongo("GET", `/databaseUsers/admin/${name}`);
+    return true;
+  } catch (e) {
+    if (e.errorCode === "USERNAME_NOT_FOUND") {
+      return false;
+    }
+    throw e;
+  }
 }
 
 export async function createUser(name: string, password: string) {
