@@ -17,3 +17,5 @@ export const add = makeGitFn("add");
 export const commit = makeGitFn("commit");
 export const branch = makeGitFn("branch");
 export const checkout = makeGitFn("checkout");
+export const remote = makeGitFn("remote");
+export const push = makeGitFn("push");

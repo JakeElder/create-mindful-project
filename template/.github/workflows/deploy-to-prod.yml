@@ -1,45 +1,12 @@
-{{=<% %>=}}
-name: Deploy to Stage
+name: Deploy to Production
 
 on:
-  pull_request:
+  push:
     branches:
-      - develop
+      - main
   workflow_dispatch:
 
 jobs:
-  publish_packages_to_npm:
-    name: Publish packages to NPM
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
-      - name: Setup Node
-        uses: actions/setup-node@v1
-        with:
-          node-version: "14"
-          registry-url: "https://registry.npmjs.org"
-      - name: Set up Git
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name 'Jake Elder'
-          git config user.email 'jake@jakes.world'
-          git config user.password ${GITHUB_TOKEN}
-      - name: Version
-        run: yarn version:beta --yes
-      - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: yarn lerna:publish --yes
-      - name: Push package.json's and tags
-        run: |
-          git push --force origin $GITHUB_HEAD_REF
-          git push --tags
-
   deploy_strapi:
     name: Deploy Strapi
     runs-on: ubuntu-latest
@@ -51,21 +18,20 @@ jobs:
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
-          project_id: ${{ secrets.GCLOUD_PROJECT_ID_STAGE }}
+          project_id: ${{ secrets.GCLOUD_PROJECT_ID_PROD }}
           service_account_key: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_JSON }}
           export_default_credentials: true
       - name: Push to Google Cloud
         env:
-          GCLOUD_PROJECT_ID_STAGE: ${{ secrets.GCLOUD_PROJECT_ID_STAGE }}
-          GCLOUD_APP_YAML_BASE64: ${{ secrets.GCLOUD_APP_YAML_BASE64_STAGE }}
+          GCLOUD_PROJECT_ID_PROD: ${{ secrets.GCLOUD_PROJECT_ID_PROD }}
+          GCLOUD_APP_YAML_BASE64: ${{ secrets.GCLOUD_APP_YAML_BASE64_PROD }}
         run: |
-          echo $GCLOUD_APP_YAML_BASE64 | base64 -d > packages/<% projectHid %>-cms/app.stage.yml
-          yarn workspace @mindfulstudio/<% projectHid %>-cms deploy:stage
+          echo $GCLOUD_APP_YAML_BASE64 | base64 -d > packages/ms-web-cms/app.prod.yml
+          yarn workspace @mindfulstudio/ms-web-cms deploy:prod
 
   deploy_storybook:
     name: Deploy Storybook
     runs-on: ubuntu-latest
-    needs: publish_packages_to_npm
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -88,17 +54,16 @@ jobs:
       - name: Install NPM Deps
         run: yarn install
       - name: Build
-        run: yarn workspace @mindfulstudio/<% projectHid %>-ui build
+        run: yarn workspace @mindfulstudio/ms-web-ui build
       - name: Deploy
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID_STAGE: ${{ secrets.VERCEL_UI_PROJECT_ID_STAGE }}
+          VERCEL_PROJECT_ID_PROD: ${{ secrets.VERCEL_UI_PROJECT_ID_PROD }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: yarn workspace @mindfulstudio/<% projectHid %>-ui deploy:stage
+        run: yarn workspace @mindfulstudio/ms-web-ui deploy:prod
 
   deploy_next_js_app:
     name: Deploy Next.js app
-    needs: publish_packages_to_npm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -112,6 +77,6 @@ jobs:
       - name: Deploy Build
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID_STAGE: ${{ secrets.VERCEL_APP_PROJECT_ID_STAGE }}
+          VERCEL_PROJECT_ID_PROD: ${{ secrets.VERCEL_APP_PROJECT_ID_PROD }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: yarn workspace @mindfulstudio/<% projectHid %>-app deploy:stage
+        run: yarn workspace @mindfulstudio/ms-web-app deploy:prod

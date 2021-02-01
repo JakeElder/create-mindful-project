@@ -7,7 +7,8 @@
     "develop": "start-storybook --ci -p 5010",
     "build": "build-storybook",
     "typecheck": "tsc --noEmit",
-    "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy ./storybook-static --no-clipboard --token=$VERCEL_TOKEN --prod"
+    "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy ./storybook-static --no-clipboard --token=$VERCEL_TOKEN --prod",
+    "deploy:prod": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_PROD vercel deploy ./storybook-static --no-clipboard --token=$VERCEL_TOKEN --prod"
   },
   "publishConfig": {
     "access": "public"

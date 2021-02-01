@@ -7,7 +7,8 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "start": "next start",
-    "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy --no-clipboard --token=$VERCEL_TOKEN --prod"
+    "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy --no-clipboard --token=$VERCEL_TOKEN --prod",
+    "deploy:prod": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_PROD vercel deploy --no-clipboard --token=$VERCEL_TOKEN --prod"
   },
   "dependencies": {
     "@apollo/client": "^3.3.6",

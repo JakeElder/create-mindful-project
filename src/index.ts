@@ -3,7 +3,6 @@
 import "source-map-support/register";
 import prompts from "prompts";
 import PrettyError from "pretty-error";
-import execa from "execa";
 import chalk from "chalk";
 import passwd from "generate-password";
 import { paramCase } from "change-case";
@@ -11,11 +10,20 @@ import path from "path";
 
 import * as steppy from "./steppy";
 
-import localSteps, { Context as LocalStepContext } from "./local-steps";
+import localSteps, {
+  Context as LocalStepContext,
+  Outputs as LocalStepOutputs,
+} from "./local-steps";
+
 import remoteSteps, {
   Context as RemoteStepContext,
   Outputs as RemoteStepOutputs,
 } from "./remote-steps";
+
+import linkSteps, {
+  Context as LinkStepContext,
+  Outputs as LinkStepOutputs,
+} from "./link-steps";
 
 class PromptCancelledError extends Error {}
 
@@ -26,13 +34,21 @@ type EnvVars = {
   GOOGLE_APPLICATION_CREDENTIALS: string;
 };
 
+export type EnvDescriptor = {
+  name: string;
+  shortName: string;
+  slug: string;
+  nodeEnv: string;
+  constantSuffix: string;
+};
+
 async function getResponses() {
   const answers = await prompts(
     [
       {
         type: "text",
         name: "projectName",
-        initial: "Mindful Studio Web",
+        initial: "MS Web",
         message: "What is the name of the project?",
       },
       {
@@ -75,63 +91,23 @@ function validateEnvVars(env: { [key: string]: any }): env is EnvVars {
   return keys.every((k) => typeof env[k] === "string" && env[k] !== "");
 }
 
-async function initialiseGit({
-  destDir,
-  originUrl,
-}: {
-  destDir: string;
-  originUrl: string;
-}) {
-  await execa("git", ["init"], {
-    cwd: destDir,
-  });
-  await execa("git", ["add", "--all"], {
-    cwd: destDir,
-  });
-  await execa("git", ["commit", "-m", "chore: initial commit [skip ci]"], {
-    cwd: destDir,
-  });
-  await execa("git", ["branch", "--move", "main"], {
-    cwd: destDir,
-  });
-  await execa("git", ["remote", "add", "origin", originUrl], {
-    cwd: destDir,
-  });
-  await execa("git", ["push", "--set-upstream", "origin", "main"], {
-    cwd: destDir,
-  });
-  await execa("git", ["checkout", "-b", "develop"], {
-    cwd: destDir,
-  });
-  await execa("git", ["push", "--set-upstream", "origin", "develop"], {
-    cwd: destDir,
-  });
-}
-
-function formatSteppyGroup(group: string) {
+function formatGroup(group: string) {
   if (group === "vercel") {
-    return chalk.magenta("[vercel]");
+    return chalk.magenta(`[${group}]`);
+  }
+  if (group === "github") {
+    return chalk.blue(`[${group}]`);
+  }
+  if (group === "google") {
+    return chalk.green(`[${group}]`);
+  }
+  if (group === "mongo") {
+    return chalk.yellow(`[${group}]`);
   }
   return `[${group}]`;
 }
 
 async function run() {
-  const { projectName, projectHid, domain } = await getResponses();
-
-  // const templateDir = path.join(__dirname, "..", "template");
-  const destDir = path.join(process.cwd(), projectHid);
-
-  // steppy.head("setting up development environment");
-
-  // await steppy.run<LocalStepContext>(localSteps, {
-  //   destDir,
-  //   templateDir,
-  //   projectHid,
-  //   projectName,
-  // });
-
-  steppy.head("setting up stage environment");
-
   if (!validateEnvVars(process.env)) {
     throw new Error();
   }
@@ -143,26 +119,117 @@ async function run() {
     GOOGLE_APPLICATION_CREDENTIALS: gcloudCredentialsFile,
   } = process.env;
 
-  const outputs = await steppy.run<RemoteStepContext, RemoteStepOutputs>(
+  const { projectName, projectHid, domain } = await getResponses();
+
+  const templateDir = path.join(__dirname, "..", "template");
+  const destDir = path.join(process.cwd(), projectHid);
+
+  steppy.head("setting up development environment");
+  await steppy.run<LocalStepContext, LocalStepOutputs>(localSteps, {
+    destDir,
+    templateDir,
+    projectHid,
+    projectName,
+  });
+
+  const mongoPassword = passwd.generate();
+
+  steppy.head("setting up stage environment");
+  const setupStageOutputs = await steppy.run<
+    RemoteStepContext,
+    RemoteStepOutputs
+  >(
     remoteSteps,
     {
       projectName,
       projectHid,
       destDir,
       domain: `stage.${domain}`,
-      envName: "Stage",
-      mongoPassword: passwd.generate(),
+      env: {
+        name: "Stage",
+        shortName: "Stage",
+        slug: "stage",
+        nodeEnv: "stage",
+        constantSuffix: "STAGE",
+      },
+      mongoPassword,
       vercelOrgId,
       vercelToken,
       npmToken,
       gcloudCredentialsFile,
     },
-    { formatGroup: formatSteppyGroup }
+    { formatGroup }
   );
 
-  console.log();
-  console.log(outputs);
-  console.log();
+  steppy.head("linking stage environment");
+  await steppy.run<LinkStepContext, LinkStepOutputs>(linkSteps, {
+    projectHid,
+    destDir,
+    env: {
+      name: "Stage",
+      shortName: "Stage",
+      slug: "stage",
+      nodeEnv: "stage",
+      constantSuffix: "STAGE",
+    },
+    vercelToken,
+    vercelOrgId,
+    cmsDatabaseUri: setupStageOutputs["getting database uri"].uri,
+    gcloudProjectId: setupStageOutputs["setting up google cloud"].projectId,
+    uiProjectId: setupStageOutputs["creating ui project"].projectId,
+    appProjectId: setupStageOutputs["creating app project"].projectId,
+    githubRepoUrl: setupStageOutputs["setting up github"].repoUrl,
+  });
+
+  steppy.head("setting up production environment");
+  const setupProdOutputs = await steppy.run<
+    RemoteStepContext,
+    RemoteStepOutputs
+  >(
+    remoteSteps,
+    {
+      projectName,
+      projectHid,
+      destDir,
+      domain,
+      env: {
+        name: "Production",
+        shortName: "Prod",
+        slug: "prod",
+        nodeEnv: "production",
+        constantSuffix: "PROD",
+      },
+      mongoPassword,
+      vercelOrgId,
+      vercelToken,
+      npmToken,
+      gcloudCredentialsFile,
+      githubRepoUrl: setupStageOutputs["setting up github"].repoUrl,
+      mongoUserCreated: true,
+    },
+    { formatGroup }
+  );
+
+  steppy.head("linking production environment");
+  await steppy.run<LinkStepContext, LinkStepOutputs>(linkSteps, {
+    projectHid,
+    destDir,
+    env: {
+      name: "Production",
+      shortName: "Prod",
+      slug: "prod",
+      nodeEnv: "production",
+      constantSuffix: "PROD",
+    },
+    vercelToken,
+    vercelOrgId,
+    cmsDatabaseUri: setupProdOutputs["getting database uri"].uri,
+    gcloudProjectId: setupProdOutputs["setting up google cloud"].projectId,
+    uiProjectId: setupProdOutputs["creating ui project"].projectId,
+    appProjectId: setupProdOutputs["creating app project"].projectId,
+    githubRepoUrl: setupProdOutputs["setting up github"].repoUrl,
+    skipGit: true,
+  });
 }
 
 run().catch((e) => {

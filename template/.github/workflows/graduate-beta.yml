@@ -1,0 +1,40 @@
+name: Graduate Beta
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  publish_packages_to_npm:
+    name: Publish packages to NPM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: "14"
+          registry-url: "https://registry.npmjs.org"
+      - name: Set up Git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name 'Jake Elder'
+          git config user.email 'jake@jakes.world'
+          git config user.password ${GITHUB_TOKEN}
+      - name: Version
+        run: yarn version:graduate --yes
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: yarn lerna:publish --yes
+      - name: Push package.json's and tags
+        run: |
+          git push --force origin $GITHUB_HEAD_REF
+          git push --tags

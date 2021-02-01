@@ -10,6 +10,7 @@
     "gcp-build": "strapi build",
     "strapi": "strapi",
     "deploy:stage": "gcloud app deploy app.stage.yml --project $GCLOUD_PROJECT_ID_STAGE --quiet",
+    "deploy:prod": "gcloud app deploy app.prod.yml --project $GCLOUD_PROJECT_ID_PROD --quiet",
     "migrate": "./scripts/migrate"
   },
   "dependencies": {

@@ -1,13 +1,12 @@
 import URI from "urijs";
 import { paramCase } from "change-case";
 import prompts from "prompts";
-import dotenv from "dotenv";
-import dotenvStringify from "dotenv-stringify";
 import fs from "fs-extra";
 import { Ora } from "ora";
 import Mustache from "mustache";
 import path from "path";
 
+import { EnvDescriptor } from ".";
 import { Step } from "./steppy";
 
 import * as vercel from "./vercel";
@@ -20,12 +19,15 @@ export type Context = {
   projectHid: string;
   destDir: string;
   domain: string;
-  envName: string;
+  env: EnvDescriptor;
   mongoPassword: string;
   vercelToken: string;
   vercelOrgId: string;
   npmToken: string;
   gcloudCredentialsFile: string;
+  gcloudProjectId?: string;
+  githubRepoUrl?: string;
+  mongoUserCreated?: boolean;
 };
 
 export type Outputs = {
@@ -38,17 +40,6 @@ export type Outputs = {
 };
 
 const steps: Step<Context, Outputs>[] = [];
-
-async function extendDotEnv(filePath: string, object: { [key: string]: any }) {
-  const env = dotenv.parse(await fs.readFile(filePath));
-  await fs.writeFile(
-    filePath,
-    dotenvStringify({
-      ...env,
-      ...object,
-    })
-  );
-}
 
 function makeReplaceTakenIdFn({
   spinner,
@@ -73,9 +64,13 @@ function makeReplaceTakenIdFn({
 steps.push({
   group: "google",
   title: "setting up google cloud",
-  run: async ({ spinner, projectName, envName }) => {
-    const googleProjectName = `${projectName} CMS ${envName}`;
-    const idealProjectId = paramCase(googleProjectName);
+  run: async ({ spinner, projectHid, projectName, env, gcloudProjectId }) => {
+    if (gcloudProjectId) {
+      return { projectId: gcloudProjectId };
+    }
+
+    const googleProjectName = `${projectName} CMS ${env.shortName}`;
+    const idealProjectId = `${projectHid}-cms-${env.slug}`;
 
     const project = await googlecloud.setupProject(
       googleProjectName,
@@ -93,7 +88,10 @@ steps.push({
 steps.push({
   group: "mongo",
   title: "creating atlas user",
-  run: async ({ projectHid, mongoPassword }) => {
+  run: async ({ projectHid, mongoPassword, mongoUserCreated }) => {
+    if (mongoUserCreated) {
+      return;
+    }
     await mongo.createUser(projectHid, mongoPassword);
   },
 });
@@ -101,8 +99,8 @@ steps.push({
 steps.push({
   group: "mongo",
   title: "getting database uri",
-  run: async ({ projectHid, envName, mongoPassword }) => {
-    const srvAddress = await mongo.getConnectionString(envName);
+  run: async ({ projectHid, env, mongoPassword }) => {
+    const srvAddress = await mongo.getConnectionString(env.name);
 
     const uri = URI(srvAddress)
       .username(projectHid)
@@ -118,9 +116,9 @@ steps.push({
 steps.push({
   group: "vercel",
   title: "creating ui project",
-  run: async ({ projectHid, domain, envName }) => {
+  run: async ({ projectHid, domain, env }) => {
     const project = await vercel.createProject({
-      name: `${projectHid}-ui-${paramCase(envName)}`,
+      name: `${projectHid}-ui-${env.slug}`,
       domain: `ui.${domain}`,
     });
     return { projectId: project.id };
@@ -130,9 +128,9 @@ steps.push({
 steps.push({
   group: "vercel",
   title: "creating app project",
-  run: async ({ projectHid, domain, envName }) => {
+  run: async ({ projectHid, domain, env }) => {
     const project = await vercel.createProject({
-      name: `${projectHid}-app-${paramCase(envName)}`,
+      name: `${projectHid}-app-${env.slug}`,
       framework: "nextjs",
       domain,
       env: [
@@ -155,16 +153,18 @@ steps.push({
 });
 
 steps.push({
+  group: "github",
   title: "setting up github",
   run: async (
     {
       projectHid,
       spinner,
-      envName,
+      env,
       vercelOrgId,
       vercelToken,
       npmToken,
       gcloudCredentialsFile,
+      githubRepoUrl,
     },
     {
       "getting database uri": { uri: databaseUri },
@@ -173,13 +173,19 @@ steps.push({
       "setting up google cloud": { projectId: gcloudProjectId },
     }
   ) => {
-    const repoUrl = await github.createRepo({
-      name: projectHid,
-      replaceTakenRepoName: makeReplaceTakenIdFn({
-        spinner,
-        resourceName: "repo name",
-      }),
-    });
+    let repoUrl;
+
+    if (githubRepoUrl) {
+      repoUrl = githubRepoUrl;
+    } else {
+      repoUrl = await github.createRepo({
+        name: projectHid,
+        replaceTakenRepoName: makeReplaceTakenIdFn({
+          spinner,
+          resourceName: "repo name",
+        }),
+      });
+    }
 
     const gcloudAppYaml = await (async () => {
       const tpl = await fs.readFile(
@@ -187,52 +193,34 @@ steps.push({
         "utf8"
       );
       const yml = Mustache.render(tpl, {
-        nodeEnv: paramCase(envName),
+        nodeEnv: env.nodeEnv,
         databaseUri,
       });
       return Buffer.from(yml).toString("base64");
     })();
 
-    const gcloudServiceAccountJSON = await fs.readFile(
-      gcloudCredentialsFile,
-      "utf8"
-    );
-
-    const envUC = envName.toUpperCase();
+    if (!githubRepoUrl) {
+      const gcloudServiceAccountJSON = await fs.readFile(
+        gcloudCredentialsFile,
+        "utf8"
+      );
+      await github.addSecrets(projectHid, {
+        NPM_TOKEN: npmToken,
+        VERCEL_TOKEN: vercelToken,
+        VERCEL_ORG_ID: vercelOrgId,
+        GCLOUD_SERVICE_ACCOUNT_JSON: gcloudServiceAccountJSON,
+      });
+    }
 
     await github.addSecrets(projectHid, {
-      NPM_TOKEN: npmToken,
-      VERCEL_TOKEN: vercelToken,
-      VERCEL_ORG_ID: vercelOrgId,
-      [`VERCEL_APP_PROJECT_ID_${envUC}`]: appProjectId,
-      [`VERCEL_UI_PROJECT_ID_${envUC}`]: uiProjectId,
-      [`GCLOUD_PROJECT_ID_${envUC}`]: gcloudProjectId,
-      [`GCLOUD_APP_YAML_BASE64_${envUC}`]: gcloudAppYaml,
-      GCLOUD_SERVICE_ACCOUNT_JSON: gcloudServiceAccountJSON,
+      [`VERCEL_APP_PROJECT_ID_${env.constantSuffix}`]: appProjectId,
+      [`VERCEL_UI_PROJECT_ID_${env.constantSuffix}`]: uiProjectId,
+      [`GCLOUD_PROJECT_ID_${env.constantSuffix}`]: gcloudProjectId,
+      [`GCLOUD_APP_YAML_BASE64_${env.constantSuffix}`]: gcloudAppYaml,
     });
 
     return { repoUrl };
   },
 });
-
-// await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
-//   DATABASE_URI_STAGE: cmsDatabaseUriStage,
-// });
-
-// await extendDotEnv(path.join(destDir, "packages", "cms", ".env"), {
-//   GCLOUD_PROJECT_ID_STAGE: gcloudProjectIdStage,
-// });
-
-// await extendDotEnv(path.join(destDir, "packages", "ui", ".env"), {
-//   VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-//   VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-//   VERCEL_PROJECT_ID_STAGE: uiProjectIdStage,
-// });
-
-// await extendDotEnv(path.join(destDir, "packages", "app", ".env"), {
-//   VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-//   VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
-//   VERCEL_PROJECT_ID_STAGE: appProjectIdStage,
-// });
 
 export default steps;

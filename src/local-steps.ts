@@ -27,7 +27,9 @@ const steps: Step<Context, Outputs>[] = [];
 
 steps.push({
   title: "creating work tree",
-  run: ({ templateDir, destDir }) => fs.copy(templateDir, destDir),
+  run: async ({ templateDir, destDir }) => {
+    await fs.copy(templateDir, destDir);
+  },
 });
 
 steps.push({
