@@ -5,9 +5,9 @@ import { Writable } from "stream";
 
 import { Caveat } from "../create-mindful-project";
 
-import * as template from "../template";
-import * as git from "../git";
-import { Step } from "../steppy";
+import * as template from "../lib/template";
+import * as git from "../lib/git";
+import { Step } from "../lib/steppy";
 
 export type Context = {
   projectHid: string;

@@ -2,9 +2,9 @@ import fs from "fs-extra";
 
 import { Caveat } from "../create-mindful-project";
 
-import * as git from "../git";
-import * as github from "../github";
-import { Step } from "../steppy";
+import * as git from "../lib/git";
+import * as github from "../lib/github";
+import { Step } from "../lib/steppy";
 
 export type Context = {
   destDir: string;

@@ -2,7 +2,7 @@ import "source-map-support/register";
 import chalk from "chalk";
 import path from "path";
 
-import * as steppy from "./steppy";
+import * as steppy from "./lib/steppy";
 
 import * as SetupLocalEnv from "./jobs/setup-local-env";
 import * as SetupGithub from "./jobs/setup-github";

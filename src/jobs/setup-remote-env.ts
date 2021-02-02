@@ -6,12 +6,12 @@ import dotenv from "dotenv";
 import dotenvStringify from "dotenv-stringify";
 
 import { EnvDescriptor, Caveat } from "../create-mindful-project";
-import { Step } from "../steppy";
+import { Step } from "../lib/steppy";
 
-import * as vercel from "../vercel";
-import * as mongo from "../mongo";
-import * as googlecloud from "../google-cloud";
-import * as github from "../github";
+import * as vercel from "../lib/vercel";
+import * as mongo from "../lib/mongo";
+import * as googlecloud from "../lib/google-cloud";
+import * as github from "../lib/github";
 
 export type Context = {
   projectName: string;
