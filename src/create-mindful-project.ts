@@ -22,25 +22,6 @@ export type EnvDescriptor = {
   constantSuffix: string;
 };
 
-function formatGroup(group: string) {
-  if (group === "vercel") {
-    return chalk.magenta(`[${group}]`);
-  }
-  if (group === "github") {
-    return chalk.blue(`[${group}]`);
-  }
-  if (group === "google") {
-    return chalk.green(`[${group}]`);
-  }
-  if (group === "mongo") {
-    return chalk.yellow(`[${group}]`);
-  }
-  if (group === "local") {
-    return chalk.grey(`[${group}]`);
-  }
-  return `[${group}]`;
-}
-
 type Params = {
   projectName: string;
   projectHid: string;
@@ -73,8 +54,7 @@ export default async function createMindfulProject({
       destDir,
       templateDir,
       projectName,
-    },
-    { formatGroup }
+    }
   );
 
   steppy.head("setting up github");
@@ -87,9 +67,6 @@ export default async function createMindfulProject({
       vercelToken,
       npmToken,
       gcloudCredentialsFile,
-    },
-    {
-      formatGroup,
     }
   );
 
@@ -111,31 +88,30 @@ export default async function createMindfulProject({
       mongoPassword,
       vercelToken,
       vercelOrgId,
-    },
-    { formatGroup }
+    }
   );
 
   steppy.head("setting up production environment");
-  await steppy.run<SetupRemoteEnv.Context, SetupRemoteEnv.Outputs, Caveat>(
-    SetupRemoteEnv.steps,
-    {
-      projectName,
-      projectHid,
-      destDir,
-      domain: `${domain}`,
-      env: {
-        name: "Production",
-        shortName: "Prod",
-        slug: "prod",
-        nodeEnv: "production",
-        constantSuffix: "PROD",
-      },
-      mongoPassword,
-      vercelToken,
-      vercelOrgId,
+  const o = await steppy.run<
+    SetupRemoteEnv.Context,
+    SetupRemoteEnv.Outputs,
+    Caveat
+  >(SetupRemoteEnv.steps, {
+    projectName,
+    projectHid,
+    destDir,
+    domain: `${domain}`,
+    env: {
+      name: "Production",
+      shortName: "Prod",
+      slug: "prod",
+      nodeEnv: "production",
+      constantSuffix: "PROD",
     },
-    { formatGroup }
-  );
+    mongoPassword,
+    vercelToken,
+    vercelOrgId,
+  });
 
   console.log();
   console.log(steppy.caveats());
