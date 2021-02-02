@@ -5,7 +5,7 @@ import path from "path";
 import dotenv from "dotenv";
 import dotenvStringify from "dotenv-stringify";
 
-import { EnvDescriptor, Caveat } from "..";
+import { EnvDescriptor, Caveat } from "../create-mindful-project";
 import { Step } from "../steppy";
 
 import * as vercel from "../vercel";

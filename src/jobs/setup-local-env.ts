@@ -3,7 +3,8 @@ import path from "path";
 import execa from "execa";
 import { Writable } from "stream";
 
-import { Caveat } from "..";
+import { Caveat } from "../create-mindful-project";
+
 import * as template from "../template";
 import * as git from "../git";
 import { Step } from "../steppy";

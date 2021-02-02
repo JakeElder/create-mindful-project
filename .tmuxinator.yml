@@ -5,3 +5,4 @@ windows:
   - Vim: vim
   - Terminal:
   - Watch: yarn dev
+  - Test: yarn test --watch

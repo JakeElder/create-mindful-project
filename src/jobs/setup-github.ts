@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 
-import { Caveat } from "..";
+import { Caveat } from "../create-mindful-project";
 
 import * as git from "../git";
 import * as github from "../github";
