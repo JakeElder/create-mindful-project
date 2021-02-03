@@ -20,42 +20,39 @@ type EnvVars = {
   GOOGLE_APPLICATION_CREDENTIALS: string;
 };
 
-async function getResponses() {
-  const answers = await prompts(
-    [
-      {
-        type: "text",
-        name: "projectName",
-        initial: "MS Web",
-        message: "What is the name of the project?",
-      },
-      {
-        type: "text",
-        name: "projectHid",
-        initial: (_, values) => {
-          return paramCase(values.projectName);
-        },
-        message: "Is this the correct project hid?",
-      },
-      {
-        type: "text",
-        name: "domain",
-        initial: "mindfulstudio.io",
-        message: "What is the domain?",
-      },
-    ],
-    {
-      onCancel: () => {
-        throw new PromptCancelledError();
-      },
-    }
-  );
+type Questions = prompts.PromptObject<
+  "projectName" | "projectHid" | "domain"
+>[];
 
-  return {
-    projectName: answers.projectName as string,
-    projectHid: answers.projectHid as string,
-    domain: answers.domain as string,
-  };
+function getResponses() {
+  const questions: Questions = [
+    {
+      type: "text",
+      name: "projectName",
+      initial: "MS Web",
+      message: "What is the name of the project?",
+    },
+    {
+      type: "text",
+      name: "projectHid",
+      initial: (_, values) => {
+        return paramCase(values.projectName);
+      },
+      message: "Is this the correct project hid?",
+    },
+    {
+      type: "text",
+      name: "domain",
+      initial: "mindfulstudio.io",
+      message: "What is the domain?",
+    },
+  ];
+
+  return prompts(questions, {
+    onCancel: () => {
+      throw new PromptCancelledError();
+    },
+  });
 }
 
 function validateEnvVars(env: { [key: string]: any }): env is EnvVars {
