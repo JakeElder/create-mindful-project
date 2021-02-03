@@ -12,6 +12,7 @@ import util from "util";
 import createMindfulProject from "./create-mindful-project";
 
 class PromptCancelledError extends Error {}
+class MissingEnvVarsError extends Error {}
 
 type EnvVars = {
   NPM_TOKEN: string;
@@ -35,9 +36,7 @@ function getResponses() {
     {
       type: "text",
       name: "projectHid",
-      initial: (_, values) => {
-        return paramCase(values.projectName);
-      },
+      initial: (_, values) => paramCase(values.projectName),
       message: "Is this the correct project hid?",
     },
     {
@@ -66,17 +65,26 @@ function validateEnvVars(env: { [key: string]: any }): env is EnvVars {
   return keys.every((k) => typeof env[k] === "string" && env[k] !== "");
 }
 
-async function run() {
-  if (!validateEnvVars(process.env)) {
-    throw new Error();
+function getEnvVars(env: { [key: string]: any }) {
+  if (!validateEnvVars(env)) {
+    throw new MissingEnvVarsError();
   }
 
+  return {
+    npmToken: env.NPM_TOKEN,
+    vercelToken: env.VERCEL_TOKEN,
+    vercelOrgId: env.VERCEL_ORG_ID,
+    gcloudCredentialsFile: env.GOOGLE_APPLICATION_CREDENTIALS,
+  };
+}
+
+async function run() {
   const {
-    NPM_TOKEN: npmToken,
-    VERCEL_TOKEN: vercelToken,
-    VERCEL_ORG_ID: vercelOrgId,
-    GOOGLE_APPLICATION_CREDENTIALS: gcloudCredentialsFile,
-  } = process.env;
+    npmToken,
+    vercelToken,
+    vercelOrgId,
+    gcloudCredentialsFile,
+  } = getEnvVars(process.env);
 
   const { projectName, projectHid, domain } = await getResponses();
   const mongoPassword = passwd.generate();
