@@ -6,6 +6,8 @@ import PrettyError from "pretty-error";
 import prompts from "prompts";
 import passwd from "generate-password";
 import { paramCase } from "change-case";
+import path from "path";
+import util from "util";
 
 import createMindfulProject from "./create-mindful-project";
 
@@ -81,8 +83,9 @@ async function run() {
 
   const { projectName, projectHid, domain } = await getResponses();
   const mongoPassword = passwd.generate();
+  const destDir = path.join(process.cwd(), projectHid);
 
-  await createMindfulProject({
+  const result = await createMindfulProject({
     projectName,
     projectHid,
     domain,
@@ -91,7 +94,10 @@ async function run() {
     vercelOrgId,
     gcloudCredentialsFile,
     mongoPassword,
+    destDir,
   });
+
+  console.log("\n", util.inspect(result, { colors: true }), "\n");
 }
 
 run().catch((e) => {

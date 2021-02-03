@@ -1,5 +1,4 @@
 import "source-map-support/register";
-import chalk from "chalk";
 import path from "path";
 
 import * as steppy from "./lib/steppy";
@@ -31,6 +30,7 @@ type Params = {
   vercelOrgId: string;
   gcloudCredentialsFile: string;
   mongoPassword: string;
+  destDir: string;
 };
 
 export default async function createMindfulProject({
@@ -42,57 +42,60 @@ export default async function createMindfulProject({
   vercelOrgId,
   gcloudCredentialsFile,
   mongoPassword,
+  destDir,
 }: Params) {
   const templateDir = path.join(__dirname, "..", "template");
-  const destDir = path.join(process.cwd(), projectHid);
 
   steppy.head("setting up dev environment");
-  await steppy.run<SetupLocalEnv.Context, SetupLocalEnv.Outputs, Caveat>(
-    SetupLocalEnv.steps,
-    {
-      projectHid,
-      destDir,
-      templateDir,
-      projectName,
-    }
-  );
+  const devOutputs = await steppy.run<
+    SetupLocalEnv.Context,
+    SetupLocalEnv.Outputs,
+    Caveat
+  >(SetupLocalEnv.steps, {
+    projectHid,
+    destDir,
+    templateDir,
+    projectName,
+  });
 
   steppy.head("setting up github");
-  await steppy.run<SetupGithub.Context, SetupGithub.Outputs, Caveat>(
-    SetupGithub.steps,
-    {
-      destDir,
-      projectHid,
-      vercelOrgId,
-      vercelToken,
-      npmToken,
-      gcloudCredentialsFile,
-    }
-  );
+  const githubOutputs = await steppy.run<
+    SetupGithub.Context,
+    SetupGithub.Outputs,
+    Caveat
+  >(SetupGithub.steps, {
+    destDir,
+    projectHid,
+    vercelOrgId,
+    vercelToken,
+    npmToken,
+    gcloudCredentialsFile,
+  });
 
   steppy.head("setting up stage environment");
-  await steppy.run<SetupRemoteEnv.Context, SetupRemoteEnv.Outputs, Caveat>(
-    SetupRemoteEnv.steps,
-    {
-      projectName,
-      projectHid,
-      destDir,
-      domain: `stage.${domain}`,
-      env: {
-        name: "Stage",
-        shortName: "Stage",
-        slug: "stage",
-        nodeEnv: "stage",
-        constantSuffix: "STAGE",
-      },
-      mongoPassword,
-      vercelToken,
-      vercelOrgId,
-    }
-  );
+  const stageOutputs = await steppy.run<
+    SetupRemoteEnv.Context,
+    SetupRemoteEnv.Outputs,
+    Caveat
+  >(SetupRemoteEnv.steps, {
+    projectName,
+    projectHid,
+    destDir,
+    domain: `stage.${domain}`,
+    env: {
+      name: "Stage",
+      shortName: "Stage",
+      slug: "stage",
+      nodeEnv: "stage",
+      constantSuffix: "STAGE",
+    },
+    mongoPassword,
+    vercelToken,
+    vercelOrgId,
+  });
 
   steppy.head("setting up production environment");
-  const o = await steppy.run<
+  const productionOutputs = await steppy.run<
     SetupRemoteEnv.Context,
     SetupRemoteEnv.Outputs,
     Caveat
@@ -113,6 +116,11 @@ export default async function createMindfulProject({
     vercelOrgId,
   });
 
-  console.log();
-  console.log(steppy.caveats());
+  return {
+    devOutputs,
+    githubOutputs,
+    stageOutputs,
+    productionOutputs,
+    caveats: steppy.caveats(),
+  };
 }
