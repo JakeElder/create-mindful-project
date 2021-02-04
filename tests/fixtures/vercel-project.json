@@ -1,0 +1,48 @@
+{
+  "accountId": "xxxxxxxxxxxxxxxxxxxxxxxx",
+  "alias": [],
+  "autoExposeSystemEnvs": true,
+  "buildCommand": null,
+  "createdAt": 1612091181937,
+  "devCommand": null,
+  "directoryListing": false,
+  "framework": null,
+  "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "installCommand": null,
+  "name": "mpr",
+  "nodeVersion": "12.x",
+  "outputDirectory": null,
+  "publicSource": null,
+  "rootDirectory": null,
+  "serverlessFunctionRegion": "iad1",
+  "sourceFilesOutsideRootDirectory": true,
+  "updatedAt": 1612092881534,
+  "latestDeployments": [],
+  "targets": {
+    "production": {
+      "alias": ["mpr.vercel.app"],
+      "aliasAssigned": 1612094067154,
+      "builds": [],
+      "createdAt": 1612092881366,
+      "createdIn": "sfo1",
+      "creator": {
+        "uid": "xxxxxxxxxxxxxxxxxxxxxxxx",
+        "email": "jake@jakeelder.info",
+        "username": "jakeelder"
+      },
+      "deploymentHostname": "xxxxxxxxxxxxxxxxxxxxxxxxx",
+      "forced": false,
+      "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "meta": {},
+      "plan": "hobby",
+      "private": true,
+      "readyState": "READY",
+      "target": "production",
+      "teamId": null,
+      "type": "LAMBDAS",
+      "url": "mpr",
+      "userId": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "withCache": false
+    }
+  }
+}

@@ -40,23 +40,14 @@ async function operationResult<T>(name: string, attempt = 1): Promise<T> {
 
 export async function getProject(projectId: string) {
   const resourcemanager = google.cloudresourcemanager("v1");
-  const res = await resourcemanager.projects.get({
-    projectId,
-    auth: await getAuth(),
-  });
-  return res.data;
-}
-
-export async function checkProjectExists(projectId: string) {
-  const resourcemanager = google.cloudresourcemanager("v1");
   try {
     const res = await resourcemanager.projects.get({
       projectId,
       auth: await getAuth(),
     });
-    return res.status === 200;
+    return res.data;
   } catch (e) {
-    return false;
+    return null;
   }
 }
 

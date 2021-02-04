@@ -3,27 +3,16 @@ import sodium from "tweetsodium";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-export async function checkRepoExists(repo: string) {
+export async function getRepo(repo: string) {
   try {
     const r = await octokit.request(`GET /repos/mindful-studio/${repo}`, {
       org: "mindful-studio",
       repo,
     });
-    return r.status >= 200 && r.status < 300;
+    return r.data;
   } catch (e) {
-    if (e.status === 404) {
-      return false;
-    }
-    throw e;
+    return null;
   }
-}
-
-export async function getRepo(repo: string) {
-  const { data } = await octokit.request(`GET /repos/mindful-studio/${repo}`, {
-    org: "mindful-studio",
-    repo,
-  });
-  return data;
 }
 
 export async function createRepo({ name }: { name: string }): Promise<string> {
@@ -31,14 +20,13 @@ export async function createRepo({ name }: { name: string }): Promise<string> {
     org: "mindful-studio",
     name,
   });
-  return r.data.ssh_url;
+  return r.data;
 }
 
-type SecretMap = {
-  [key: string]: string;
-};
-
-export async function addSecrets(repo: string, secrets: SecretMap) {
+export async function addSecrets(
+  repo: string,
+  secrets: Record<string, string>
+) {
   const owner = "mindful-studio";
   const {
     data: key,

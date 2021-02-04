@@ -52,8 +52,8 @@ steps.push({
   group: "mongo",
   title: "creating atlas user",
   run: async ({ projectHid, mongoPassword, caveat }) => {
-    const userAlreadyExists = await mongo.checkUserExists(projectHid);
-    if (userAlreadyExists) {
+    const user = await mongo.getUser(projectHid);
+    if (user !== null) {
       caveat.add("ATLAS_USER_EXISTS");
       return;
     }
@@ -88,15 +88,10 @@ steps.push({
     const googleProjectName = `${projectName} CMS ${env.shortName}`;
     const projectId = `${projectHid}-cms-${env.slug}`;
 
-    let project;
+    let project = await googlecloud.getProject(projectId);
 
-    const projectAlreadyExists = await googlecloud.checkProjectExists(
-      projectId
-    );
-
-    if (projectAlreadyExists) {
+    if (project !== null) {
       caveat.add("GCLOUD_PROJECT_EXISTS");
-      project = await googlecloud.getProject(projectId);
     } else {
       project = await googlecloud.setupProject(googleProjectName, projectId);
     }
@@ -121,16 +116,14 @@ steps.push({
   title: "creating ui project",
   run: async ({ projectHid, domain, env, caveat }) => {
     const name = `${projectHid}-ui-${env.slug}`;
-    let project;
+    let project = await vercel.getProject(name);
 
-    const projectAlreadyExists = await vercel.checkProjectExists(name);
-
-    if (projectAlreadyExists) {
+    if (project !== null) {
       caveat.add("VERCEL_PROJECT_EXISTS");
-      project = await vercel.getProject(name);
     } else {
       project = await vercel.createProject({ name, domain: `ui.${domain}` });
     }
+
     return { projectId: project.id };
   },
 });
@@ -140,13 +133,10 @@ steps.push({
   title: "creating app project",
   run: async ({ projectHid, domain, env, caveat }) => {
     const name = `${projectHid}-app-${env.slug}`;
-    let project;
+    let project = await vercel.getProject(name);
 
-    const projectAlreadyExists = await vercel.checkProjectExists(name);
-
-    if (projectAlreadyExists) {
+    if (project !== null) {
       caveat.add("VERCEL_PROJECT_EXISTS");
-      project = await vercel.getProject(name);
     } else {
       project = await vercel.createProject({
         name,
@@ -168,6 +158,7 @@ steps.push({
         ],
       });
     }
+
     return { projectId: project.id };
   },
 });

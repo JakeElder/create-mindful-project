@@ -33,11 +33,10 @@ steps.push({
     gcloudCredentialsFile,
     caveat,
   }) => {
-    const repoExists = await github.checkRepoExists(projectHid);
+    let repo = await github.getRepo(projectHid);
 
-    if (repoExists) {
+    if (repo !== null) {
       caveat.add("GITHUB_REPO_EXISTS");
-      const repo = await github.getRepo(projectHid);
       return { repoUrl: repo.ssh_url };
     }
 

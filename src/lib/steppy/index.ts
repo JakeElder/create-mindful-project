@@ -1,7 +1,12 @@
-import chalk from "chalk";
 import boxen from "boxen";
 import { Observable, Subject } from "rxjs";
 import DefaultFormatter from "./formatters/default";
+
+let formatter: Formatter = new DefaultFormatter();
+
+export function setFormatter(newFormatter: Formatter) {
+  formatter = newFormatter;
+}
 
 export type StepDescriptor = {
   group?: string;
@@ -37,8 +42,7 @@ let caveatStore: string[] = [];
 
 export async function run<AdditionalContext, Outputs, Caveat extends string>(
   steps: Step<AdditionalContext, Outputs, Caveat>[],
-  additionalContext: AdditionalContext,
-  options?: { formatter?: Formatter }
+  additionalContext: AdditionalContext
 ): Promise<NonVoid<Outputs>> {
   let outputs: Partial<NonVoid<Outputs>> = {};
 
@@ -50,7 +54,6 @@ export async function run<AdditionalContext, Outputs, Caveat extends string>(
     ...additionalContext,
   };
 
-  const formatter = options?.formatter || new DefaultFormatter();
   const subject = new Subject<StepDescriptor>();
   formatter.subscribe(subject);
 
@@ -79,14 +82,12 @@ export async function run<AdditionalContext, Outputs, Caveat extends string>(
 }
 
 export function head(message: string) {
-  console.log(
-    chalk.white(
-      boxen(message, {
-        borderStyle: "classic",
-        margin: { left: 0, top: 1, right: 0, bottom: 1 },
-        padding: { left: 1, top: 0, right: 1, bottom: 0 },
-      })
-    )
+  formatter.log(
+    boxen(message, {
+      borderStyle: "classic",
+      margin: { left: 0, top: 1, right: 0, bottom: 1 },
+      padding: { left: 1, top: 0, right: 1, bottom: 0 },
+    })
   );
 }
 

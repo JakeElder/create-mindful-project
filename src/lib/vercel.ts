@@ -35,17 +35,12 @@ async function vercel(
   return r.json();
 }
 
-export function getProject(name: string) {
-  return vercel("GET", `/v6/projects/${name}`);
-}
-
-export async function checkProjectExists(name: string) {
+export async function getProject(name: string) {
   try {
-    await vercel("GET", `/v6/projects/${name}`);
-    return true;
+    const project = await vercel("GET", `/v6/projects/${name}`);
+    return project;
   } catch (e) {
-    console.log(e);
-    return false;
+    return null;
   }
 }
 

@@ -38,13 +38,13 @@ async function mongo(
   return r.json();
 }
 
-export async function checkUserExists(name: string) {
+export async function getUser(name: string) {
   try {
-    await mongo("GET", `/databaseUsers/admin/${name}`);
-    return true;
+    const user = await mongo("GET", `/databaseUsers/admin/${name}`);
+    return user;
   } catch (e) {
     if (e.errorCode === "USERNAME_NOT_FOUND") {
-      return false;
+      return null;
     }
     throw e;
   }
@@ -70,7 +70,6 @@ export async function createUser(name: string, password: string) {
 }
 
 export async function getConnectionString(clusterName: string) {
-  const projectId = process.env.MONGO_PROJECT_ID;
   const { srvAddress } = await mongo("GET", `/clusters/${clusterName}`);
   return srvAddress;
 }

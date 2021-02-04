@@ -91,15 +91,15 @@ async function run() {
   const destDir = path.join(process.cwd(), projectHid);
 
   const result = await createMindfulProject({
-    projectName,
-    projectHid,
-    domain,
+    destDir,
     npmToken,
     vercelToken,
     vercelOrgId,
     gcloudCredentialsFile,
+    projectName,
+    projectHid,
+    domain,
     mongoPassword,
-    destDir,
   });
 
   console.log("\n", util.inspect(result, { colors: true }), "\n");
