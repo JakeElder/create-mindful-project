@@ -1,5 +1,5 @@
-name: "Mindful Project Starter"
-tmux_options: -L mindful-project-starter
+name: "Create Mindful Project"
+tmux_options: -L create-mindful-project
 
 windows:
   - Vim: vim
