@@ -6,7 +6,6 @@ import * as steppy from "./lib/steppy";
 import * as SetupLocalEnv from "./jobs/setup-local-env";
 import * as SetupGithub from "./jobs/setup-github";
 import * as SetupRemoteEnv from "./jobs/setup-remote-env";
-import DefaultFormatter from "./lib/steppy/formatters/default";
 
 export type Caveat =
   | "GITHUB_REPO_EXISTS"
