@@ -2,10 +2,11 @@ import DigestFetch from "digest-fetch";
 
 export class UserAlreadyExistsError extends Error {}
 
-const df = new DigestFetch(
-  process.env.MONGO_USER_ID,
-  process.env.MONGO_USER_TOKEN
-);
+let df: any;
+
+export function setAuth(userId: string, userToken: string) {
+  df = new DigestFetch(userId, userToken);
+}
 
 class MongoRequestError extends Error {
   constructor(e: any) {
@@ -19,9 +20,8 @@ async function mongo(
   endpoint: string,
   params?: { [key: string]: any }
 ) {
-  const projectId = process.env.MONGO_PROJECT_ID;
   const r = await df.fetch(
-    `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}${endpoint}`,
+    `https://cloud.mongodb.com/api/atlas/v1.0/groups${endpoint}`,
     {
       method,
       ...(params && { body: JSON.stringify(params) }),
@@ -38,9 +38,12 @@ async function mongo(
   return r.json();
 }
 
-export async function getUser(name: string) {
+export async function getUser(projectId: string, name: string) {
   try {
-    const user = await mongo("GET", `/databaseUsers/admin/${name}`);
+    const user = await mongo(
+      "GET",
+      `/${projectId}/databaseUsers/admin/${name}`
+    );
     return user;
   } catch (e) {
     if (e.errorCode === "USERNAME_NOT_FOUND") {
@@ -50,10 +53,12 @@ export async function getUser(name: string) {
   }
 }
 
-export async function createUser(name: string, password: string) {
-  const projectId = process.env.MONGO_PROJECT_ID;
-
-  const r = await mongo("POST", `/databaseUsers`, {
+export async function createUser(
+  projectId: string,
+  name: string,
+  password: string
+) {
+  const r = await mongo("POST", `/${projectId}/databaseUsers`, {
     databaseName: "admin",
     username: name,
     groupId: projectId,
@@ -69,7 +74,7 @@ export async function createUser(name: string, password: string) {
   }
 }
 
-export async function getConnectionString(clusterName: string) {
-  const { srvAddress } = await mongo("GET", `/clusters/${clusterName}`);
+export async function getConnectionString(projectId: string) {
+  const { srvAddress } = await mongo("GET", `/${projectId}/clusters/Standard`);
   return srvAddress;
 }

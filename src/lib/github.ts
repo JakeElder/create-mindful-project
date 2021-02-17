@@ -15,7 +15,7 @@ export async function getRepo(repo: string) {
   }
 }
 
-export async function createRepo({ name }: { name: string }): Promise<string> {
+export async function createRepo({ name }: { name: string }): Promise<any> {
   const r = await octokit.request("POST /orgs/mindful-studio/repos", {
     org: "mindful-studio",
     name,

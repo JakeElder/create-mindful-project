@@ -40,7 +40,7 @@ steps.push({
       return { repoUrl: repo.ssh_url };
     }
 
-    const repoUrl = await github.createRepo({ name: projectHid });
+    const { ssh_url } = await github.createRepo({ name: projectHid });
 
     const gcloudServiceAccountJSON = await fs.readFile(
       gcloudCredentialsFile,
@@ -54,7 +54,7 @@ steps.push({
       GCLOUD_SERVICE_ACCOUNT_JSON: gcloudServiceAccountJSON,
     });
 
-    return { repoUrl };
+    return { repoUrl: ssh_url };
   },
 });
 

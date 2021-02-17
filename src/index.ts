@@ -8,6 +8,7 @@ import passwd from "generate-password";
 import { paramCase } from "change-case";
 import path from "path";
 import util from "util";
+import yargs from "yargs/yargs";
 
 import createMindfulProject from "./create-mindful-project";
 
@@ -19,6 +20,12 @@ type EnvVars = {
   VERCEL_TOKEN: string;
   VERCEL_ORG_ID: string;
   GOOGLE_APPLICATION_CREDENTIALS: string;
+  MONGO_PROJECT_ID_STAGE: string;
+  MONGO_USER_ID_STAGE: string;
+  MONGO_USER_TOKEN_STAGE: string;
+  MONGO_PROJECT_ID_PROD: string;
+  MONGO_USER_ID_PROD: string;
+  MONGO_USER_TOKEN_PROD: string;
 };
 
 type Questions = prompts.PromptObject<
@@ -75,15 +82,31 @@ function getEnvVars(env: { [key: string]: any }) {
     vercelToken: env.VERCEL_TOKEN,
     vercelOrgId: env.VERCEL_ORG_ID,
     gcloudCredentialsFile: env.GOOGLE_APPLICATION_CREDENTIALS,
+    mongoProjectIdStage: env.MONGO_PROJECT_ID_STAGE,
+    mongoUserIdStage: env.MONGO_USER_ID_STAGE,
+    mongoUserTokenStage: env.MONGO_USER_TOKEN_STAGE,
+    mongoProjectIdProd: env.MONGO_PROJECT_ID_PROD,
+    mongoUserIdProd: env.MONGO_USER_ID_PROD,
+    mongoUserTokenProd: env.MONGO_USER_TOKEN_PROD,
   };
 }
 
 async function run() {
+  const { argv } = yargs(process.argv).options({
+    googleHid: { type: "string" },
+  });
+
   const {
     npmToken,
     vercelToken,
     vercelOrgId,
     gcloudCredentialsFile,
+    mongoProjectIdStage,
+    mongoUserIdStage,
+    mongoUserTokenStage,
+    mongoProjectIdProd,
+    mongoUserIdProd,
+    mongoUserTokenProd,
   } = getEnvVars(process.env);
 
   const { projectName, projectHid, domain } = await getResponses();
@@ -96,9 +119,16 @@ async function run() {
     vercelToken,
     vercelOrgId,
     gcloudCredentialsFile,
+    googleHid: argv.googleHid,
     projectName,
     projectHid,
     domain,
+    mongoProjectIdStage,
+    mongoUserIdStage,
+    mongoUserTokenStage,
+    mongoProjectIdProd,
+    mongoUserIdProd,
+    mongoUserTokenProd,
     mongoPassword,
   });
 
@@ -109,6 +139,7 @@ run().catch((e) => {
   if (e instanceof PromptCancelledError) {
     process.exit(1);
   }
+  console.log(e);
   console.error(new PrettyError().render(e));
   process.exit(1);
 });

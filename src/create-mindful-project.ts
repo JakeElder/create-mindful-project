@@ -29,6 +29,13 @@ type Params = {
   vercelToken: string;
   vercelOrgId: string;
   gcloudCredentialsFile: string;
+  googleHid?: string;
+  mongoProjectIdStage: string;
+  mongoUserIdStage: string;
+  mongoUserTokenStage: string;
+  mongoProjectIdProd: string;
+  mongoUserIdProd: string;
+  mongoUserTokenProd: string;
   mongoPassword: string;
   destDir: string;
 };
@@ -41,6 +48,13 @@ export default async function createMindfulProject({
   vercelToken,
   vercelOrgId,
   gcloudCredentialsFile,
+  googleHid,
+  mongoProjectIdStage,
+  mongoUserIdStage,
+  mongoUserTokenStage,
+  mongoProjectIdProd,
+  mongoUserIdProd,
+  mongoUserTokenProd,
   mongoPassword,
   destDir,
 }: Params) {
@@ -89,6 +103,10 @@ export default async function createMindfulProject({
       nodeEnv: "stage",
       constantSuffix: "STAGE",
     },
+    googleHid,
+    mongoUserId: mongoUserIdStage,
+    mongoUserToken: mongoUserTokenStage,
+    mongoProjectId: mongoProjectIdStage,
     mongoPassword,
     vercelToken,
     vercelOrgId,
@@ -111,6 +129,10 @@ export default async function createMindfulProject({
       nodeEnv: "production",
       constantSuffix: "PROD",
     },
+    googleHid,
+    mongoUserId: mongoUserIdProd,
+    mongoUserToken: mongoUserTokenProd,
+    mongoProjectId: mongoProjectIdProd,
     mongoPassword,
     vercelToken,
     vercelOrgId,

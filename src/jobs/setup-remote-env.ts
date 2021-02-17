@@ -19,12 +19,17 @@ export type Context = {
   destDir: string;
   domain: string;
   env: EnvDescriptor;
+  googleHid?: string;
+  mongoUserId: string;
+  mongoUserToken: string;
+  mongoProjectId: string;
   mongoPassword: string;
   vercelToken: string;
   vercelOrgId: string;
 };
 
 export type Outputs = {
+  "setting auth": void;
   "creating atlas user": void;
   "getting database uri": { uri: string };
   "setting up google cloud": { projectId: string; appYaml: string };
@@ -50,22 +55,30 @@ async function extendDotEnv(filePath: string, object: { [key: string]: any }) {
 
 steps.push({
   group: "mongo",
+  title: "setting auth",
+  run: async ({ mongoUserId, mongoUserToken }) => {
+    mongo.setAuth(mongoUserId, mongoUserToken);
+  },
+});
+
+steps.push({
+  group: "mongo",
   title: "creating atlas user",
-  run: async ({ projectHid, mongoPassword, caveat }) => {
-    const user = await mongo.getUser(projectHid);
+  run: async ({ projectHid, mongoPassword, caveat, mongoProjectId }) => {
+    const user = await mongo.getUser(mongoProjectId, projectHid);
     if (user !== null) {
       caveat.add("ATLAS_USER_EXISTS");
       return;
     }
-    await mongo.createUser(projectHid, mongoPassword);
+    await mongo.createUser(mongoProjectId, projectHid, mongoPassword);
   },
 });
 
 steps.push({
   group: "mongo",
   title: "getting database uri",
-  run: async ({ projectHid, env, mongoPassword }) => {
-    const srvAddress = await mongo.getConnectionString(env.name);
+  run: async ({ projectHid, mongoPassword, mongoProjectId }) => {
+    const srvAddress = await mongo.getConnectionString(mongoProjectId);
 
     const uri = URI(srvAddress)
       .username(projectHid)
@@ -82,11 +95,11 @@ steps.push({
   group: "google",
   title: "setting up google cloud",
   run: async (
-    { projectHid, projectName, env, caveat },
+    { projectHid, projectName, env, caveat, googleHid },
     { "getting database uri": { uri: databaseUri } }
   ) => {
     const googleProjectName = `${projectName} CMS ${env.shortName}`;
-    const projectId = `${projectHid}-cms-${env.slug}`;
+    const projectId = `${googleHid || projectHid}-cms-${env.slug}`;
 
     let project = await googlecloud.getProject(projectId);
 
