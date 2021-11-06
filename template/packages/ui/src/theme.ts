@@ -1,17 +1,13 @@
-export default {
-  fontSizes: [".75rem", ".875rem", "1rem", "1.25rem", "1.5rem", "2rem"],
-  colors: {
-    link: ["SkyBlue", "SteelBlue"],
-    shades: [
-      "#000",
-      "#222",
-      "#444",
-      "#666",
-      "#888",
-      "#AAA",
-      "#CCC",
-      "#DDD",
-      "#FFF",
-    ],
-  },
-};
+import extend from "extend";
+
+const values = { colors: {} } as const;
+const aliases = {} as const;
+
+const theme = extend(true, {}, values, aliases);
+type T = typeof theme & { locale: string | undefined };
+
+declare module "@emotion/react" {
+  export interface Theme extends T {}
+}
+
+export default theme;

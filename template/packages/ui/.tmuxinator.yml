@@ -5,4 +5,4 @@ tmux_options: -L {{projectHid}}
 windows:
   - Vim: vim
   - Terminal:
-  - Server: yarn develop
+  - Server: yarn dev

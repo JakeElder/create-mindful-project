@@ -77,8 +77,11 @@ steps.push({
 steps.push({
   group: "mongo",
   title: "getting database uri",
-  run: async ({ projectHid, mongoPassword, mongoProjectId }) => {
-    const srvAddress = await mongo.getConnectionString(mongoProjectId);
+  run: async ({ projectHid, mongoPassword, mongoProjectId, env }) => {
+    const srvAddress = await mongo.getConnectionString(
+      mongoProjectId,
+      env.shortName
+    );
 
     const uri = URI(srvAddress)
       .username(projectHid)

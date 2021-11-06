@@ -15,29 +15,39 @@ import createMindfulProject from "./create-mindful-project";
 class PromptCancelledError extends Error {}
 class MissingEnvVarsError extends Error {}
 
-type EnvVars = {
-  NPM_TOKEN: string;
-  VERCEL_TOKEN: string;
-  VERCEL_ORG_ID: string;
-  GOOGLE_APPLICATION_CREDENTIALS: string;
-  MONGO_PROJECT_ID_STAGE: string;
-  MONGO_USER_ID_STAGE: string;
-  MONGO_USER_TOKEN_STAGE: string;
-  MONGO_PROJECT_ID_PROD: string;
-  MONGO_USER_ID_PROD: string;
-  MONGO_USER_TOKEN_PROD: string;
-};
+const REQUIRED_ENV_VARS = [
+  "NPM_TOKEN",
+  "VERCEL_TOKEN",
+  "VERCEL_ORG_ID",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "GOOGLE_CLOUD_PARENT_FOLDER_ID",
+  "GOOGLE_CLOUD_BILLING_ACCOUNT_ID",
+  "GITHUB_TOKEN",
+  "MONGO_PROJECT_ID_STAGE",
+  "MONGO_USER_ID_STAGE",
+  "MONGO_USER_TOKEN_STAGE",
+  "MONGO_PROJECT_ID_PROD",
+  "MONGO_USER_ID_PROD",
+  "MONGO_USER_TOKEN_PROD",
+] as const;
 
-type Questions = prompts.PromptObject<
-  "projectName" | "projectHid" | "domain"
->[];
+type EnvVars = Record<typeof REQUIRED_ENV_VARS[number], string>;
 
-function getResponses() {
+function getResponses({
+  projectName,
+  domain,
+}: {
+  projectName?: string;
+  domain?: string;
+}) {
+  type QuestionIds = "projectName" | "projectHid" | "domain";
+  type Questions = prompts.PromptObject<QuestionIds>[];
+
   const questions: Questions = [
     {
       type: "text",
       name: "projectName",
-      initial: "MS Web",
+      initial: projectName,
       message: "What is the name of the project?",
     },
     {
@@ -49,7 +59,7 @@ function getResponses() {
     {
       type: "text",
       name: "domain",
-      initial: "mindfulstudio.io",
+      initial: domain,
       message: "What is the domain?",
     },
   ];
@@ -62,14 +72,9 @@ function getResponses() {
 }
 
 function validateEnvVars(env: { [key: string]: any }): env is EnvVars {
-  const keys = [
-    "NPM_TOKEN",
-    "VERCEL_TOKEN",
-    "VERCEL_ORG_ID",
-    "GOOGLE_APPLICATION_CREDENTIALS",
-  ];
-
-  return keys.every((k) => typeof env[k] === "string" && env[k] !== "");
+  return REQUIRED_ENV_VARS.every(
+    (k) => typeof env[k] === "string" && env[k] !== ""
+  );
 }
 
 function getEnvVars(env: { [key: string]: any }) {
@@ -94,6 +99,9 @@ function getEnvVars(env: { [key: string]: any }) {
 async function run() {
   const { argv } = yargs(process.argv).options({
     googleHid: { type: "string" },
+    projectName: { type: "string" },
+    projectHid: { type: "string" },
+    domain: { type: "string" },
   });
 
   const {
@@ -109,7 +117,10 @@ async function run() {
     mongoUserTokenProd,
   } = getEnvVars(process.env);
 
-  const { projectName, projectHid, domain } = await getResponses();
+  const { projectName, projectHid, domain } = await getResponses({
+    projectName: argv.projectName,
+    domain: argv.domain,
+  });
   const mongoPassword = passwd.generate();
   const destDir = path.join(process.cwd(), projectHid);
 

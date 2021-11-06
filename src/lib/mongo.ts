@@ -74,7 +74,13 @@ export async function createUser(
   }
 }
 
-export async function getConnectionString(projectId: string) {
-  const { srvAddress } = await mongo("GET", `/${projectId}/clusters/Standard`);
+export async function getConnectionString(
+  projectId: string,
+  clusterName: string
+) {
+  const { srvAddress } = await mongo(
+    "GET",
+    `/${projectId}/clusters/${clusterName}`
+  );
   return srvAddress;
 }

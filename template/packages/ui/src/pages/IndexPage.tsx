@@ -1,4 +1,3 @@
-import React from "react";
 import Frame from "../layouts/Frame";
 import ProjectTitle from "../components/ProjectTitle";
 

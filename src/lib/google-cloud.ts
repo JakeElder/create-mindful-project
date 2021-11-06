@@ -64,7 +64,7 @@ export async function createProject({
     requestBody: {
       name,
       projectId,
-      parent: { type: "folder", id: process.env.GCLOUD_PARENT_FOLDER_ID },
+      parent: { type: "folder", id: process.env.GOOGLE_CLOUD_PARENT_FOLDER_ID },
     },
     auth: await getAuth(),
   });
@@ -144,7 +144,7 @@ export async function setupProject(
 
   await updateBilling({
     projectId: project.projectId,
-    billingAccountName: process.env.GCLOUD_BILLING_ACCOUNT as string,
+    billingAccountName: process.env.GOOGLE_CLOUD_BILLING_ACCOUNT_ID as string,
   });
 
   await enableService({

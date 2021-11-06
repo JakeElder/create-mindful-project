@@ -1,8 +1,8 @@
-import React from "react";
+/** @jsxImportSource @emotion/react */
 import theme from "../theme";
 import { ThemeProvider, Global, css } from "@emotion/react";
 
-function Theme({ children }: React.PropsWithChildren<{}>) {
+function Theme({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <Global

@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@mindfulstudio/{{projectHid}}-tsconfig": "0.1.0",
-    "superstruct": "^0.12.1"
+    "superstruct": "^0.15.3"
   },
   "devDependencies": {
     "prettier": "^2.2.1",
-    "typescript": "^4.1.2"
+    "typescript": "^4.4.4"
   }
 }

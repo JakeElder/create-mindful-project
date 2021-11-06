@@ -1,7 +1,8 @@
 {
   "extends": "@mindfulstudio/{{projectHid}}-tsconfig",
   "compilerOptions": {
-    "jsxImportSource": "@emotion/react"
+    "jsxImportSource": "@emotion/react",
+    "incremental": true
   },
   "exclude": ["node_modules"],
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"]

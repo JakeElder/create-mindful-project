@@ -4,7 +4,7 @@
   "license": "UNLICENSED",
   "main": "src/index",
   "scripts": {
-    "develop": "start-storybook --ci -p 5010",
+    "dev": "start-storybook --ci -p 5010",
     "build": "build-storybook",
     "typecheck": "tsc --noEmit",
     "deploy:stage": "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID_STAGE vercel deploy ./storybook-static --no-clipboard --token=$VERCEL_TOKEN --prod",
@@ -14,16 +14,15 @@
     "access": "public"
   },
   "dependencies": {
-    "@emotion/react": "^11.1.2",
-    "@emotion/styled": "^11.0.0",
+    "@emotion/react": "^11.5.0",
+    "@emotion/styled": "^11.3.0",
     "@mindfulstudio/{{projectHid}}-tsconfig": "0.1.0",
     "@mindfulstudio/{{projectHid}}-types": "0.1.0",
-    "@styled-system/css": "^5.1.5",
-    "@types/hls.js": "^0.13.3",
-    "@types/styled-system__css": "^5.0.14",
+    "@types/extend": "^3.0.1",
+    "extend": "^3.0.2",
     "hls.js": "^0.14.17",
-    "react": "17.0.1",
-    "react-dom": "17.0.1"
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.12.10",
@@ -35,6 +34,6 @@
     "@storybook/react": "^6.1.10",
     "@types/react": "^17.0.0",
     "babel-loader": "^8.2.2",
-    "typescript": "^4.1.2"
+    "typescript": "^4.4.4"
   }
 }
